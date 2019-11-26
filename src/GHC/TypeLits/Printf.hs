@@ -13,7 +13,7 @@
 {-# LANGUAGE TypeOperators          #-}
 {-# LANGUAGE UndecidableInstances   #-}
 
-module GHC.Typelits.Printf where
+module GHC.TypeLits.Printf where
 
 -- module GHC.Typelits.Printf (
 --   ) where
@@ -26,6 +26,7 @@ import           Data.Vinyl.Curry
 import           Data.Vinyl.Functor
 import           GHC.Exts
 import           GHC.TypeLits
+import           GHC.TypeLits.Printf.Parse
 
 -- so it looks like there are basically three ways of going about this:
 --

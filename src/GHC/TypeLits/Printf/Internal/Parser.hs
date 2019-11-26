@@ -5,11 +5,7 @@
 {-# LANGUAGE TypeOperators        #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module GHC.Typelits.Printf.Parse where
-
--- module GHC.Typelits.Printf.Parse (
---     RunParser
---   ) where
+module GHC.TypeLits.Printf.Internal.Parser where
 
 import           Data.Kind
 import           GHC.TypeLits
@@ -19,29 +15,6 @@ import           GHC.TypeLits
 
 -- | A type synonym for a single-character symbol
 type SChar = Symbol
-
-data FormatAdjustment = LeftAdjust | ZeroPad
-data FormatSign       = SignPlus   | SignSpace
-
-data Flags = Flags
-    { fAdjust    :: Maybe FormatAdjustment
-    , fSign      :: Maybe FormatSign
-    , fAlternate :: Bool
-    }
-
-data WidthMod = WMhh
-              | WMh
-              | WMl
-              | WMll
-              | WML
-
-data FieldFormat = FF
-    { fmtFlags     :: Flags
-    , fmtWidth     :: Maybe Nat
-    , fmtPrecision :: Maybe Nat
-    , fmtWidthMod  :: Maybe WidthMod
-    , fmtChar      :: SChar
-    }
 
 type Parser a = a -> Type
 
@@ -127,25 +100,14 @@ type family CatHelp (xs :: Maybe ([SChar], [SChar])) :: Maybe (Symbol, [SChar]) 
     CatHelp ('Just '(cs, str)) = 'Just '(CatChars cs, str)
 type instance RunParser (Cat p) str = CatHelp (RunParser p str)
 
-data ParseFlags :: Parser Flags
-type instance RunParser ParseFlags str = 'Just (ProcessFlags ('Flags 'Nothing 'Nothing 'False) str)
+type family EvalHelp (r :: Maybe (a, [SChar])) :: Maybe a where
+    EvalHelp 'Nothing          = 'Nothing
+    EvalHelp ('Just '(x, str)) = 'Just x
+type EvalParser (p :: Parser a) str = EvalHelp (RunParser p str) :: Maybe a
 
-type ParseWM = (Sym "h" *> (('WMhh <$ Sym "h") <|> Pure 'WMh))
-           <|> (Sym "l" *> (('WMll <$ Sym "l") <|> Pure 'WMl))
-           <|> ('WML <$ Sym "L")
-
-
-type ParseFF = Sym "%"
-            *> ('FF <$> ParseFlags
-                    <*> Optional Number
-                    <*> Optional (Sym "." *> Number)
-                    <*> Optional ParseWM
-                    <*> AnySym
-               )
-
-type ParseFmtStr = Many ( ('Left  <$> Cat (Some (NotSym "%")))
-                      <|> ('Right <$> ParseFF                )
-                        )
+type family EvalHelp_ (r :: Maybe (a, [SChar])) :: a where
+    EvalHelp_ ('Just '(x, str)) = x
+type EvalParser_ (p :: Parser a) str = EvalHelp_ (RunParser p str) :: a
 
 type family CharDigit (c :: SChar) :: Maybe Nat where
     CharDigit "0" = 'Just 0
@@ -168,20 +130,3 @@ type family CatChars (cs :: [SChar]) :: Symbol where
     CatChars '[]       = ""
     CatChars (c ': cs) = AppendSymbol c (CatChars cs)
 
-type family ProcessFlags (f :: Flags) (str :: [SChar]) :: (Flags, [SChar]) where
-    ProcessFlags ('Flags d i l) ("-" ': cs) = '( 'Flags ('Just (UpdateAdjust d 'LeftAdjust)) i l, cs)
-    ProcessFlags ('Flags d i l) ("0" ': cs) = '( 'Flags ('Just (UpdateAdjust d 'ZeroPad   )) i l, cs)
-    ProcessFlags ('Flags d i l) ("+" ': cs) = '( 'Flags d ('Just (UpdateSign i 'SignPlus )) l, cs)
-    ProcessFlags ('Flags d i l) (" " ': cs) = '( 'Flags d ('Just (UpdateSign i 'SignSpace)) l, cs)
-    ProcessFlags ('Flags d i l) ("#" ': cs) = '( 'Flags d i 'True, cs)
-    ProcessFlags f              cs          = '(f, cs)
-
-type family UpdateAdjust d1 d2 where
-    UpdateAdjust 'Nothing            d2 = d2
-    UpdateAdjust ('Just 'LeftAdjust) d2 = 'LeftAdjust
-    UpdateAdjust ('Just 'ZeroPad   ) d2 = d2
-
-type family UpdateSign i1 i2 where
-    UpdateSign 'Nothing           i2 = i2
-    UpdateSign ('Just 'SignPlus ) i2 = 'SignPlus
-    UpdateSign ('Just 'SignSpace) i2 = i2
