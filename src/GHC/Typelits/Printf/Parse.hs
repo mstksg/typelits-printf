@@ -12,9 +12,6 @@ module GHC.Typelits.Printf.Parse where
 --   ) where
 
 import           Data.Kind
-import           Data.List.NonEmpty (NonEmpty(..))
-import           Data.Type.Bool
-import           Data.Type.Equality
 import           GHC.TypeLits
 
 -- hello, we're going to attempt to implement
@@ -23,26 +20,51 @@ import           GHC.TypeLits
 -- | A type synonym for a single-character symbol
 type SChar = Symbol
 
+data FormatAdjustment = LeftAdjust | ZeroPad
+data FormatSign       = SignPlus   | SignSpace
+
+data Flags = Flags
+    { fAdjust    :: Maybe FormatAdjustment
+    , fSign      :: Maybe FormatSign
+    , fAlternate :: Bool
+    }
+
+data WidthMod = WMhh
+              | WMh
+              | WMl
+              | WMll
+              | WML
+
 data FieldFormat = FF
-    { fmtWidth     :: Maybe Nat
+    { fmtFlags     :: Flags
+    , fmtWidth     :: Maybe Nat
+    , fmtPrecision :: Maybe Nat
+    , fmtWidthMod  :: Maybe WidthMod
     , fmtChar      :: SChar
     }
 
 type Parser a = a -> Type
 
-type family RunParser (p :: Parser a) (lst :: [SChar]) :: Maybe (a, [SChar])
-
-data Sym :: SChar -> Parser SChar
-type family SymHelp (c :: SChar) (lst :: [SChar]) :: Maybe (SChar, [SChar]) where
-    SymHelp c (c ': cs) = 'Just '(c, cs)
-    SymHelp c d         = 'Nothing
-type instance RunParser (Sym c) cs = SymHelp c cs
+type family RunParser (p :: Parser a) (str :: [SChar]) :: Maybe (a, [SChar])
 
 data Pure :: a -> Parser a
 type instance RunParser (Pure x) str = 'Just '(x, str)
 
+data Sym :: SChar -> Parser SChar
+type family SymHelp (c :: SChar) (str :: [SChar]) :: Maybe (SChar, [SChar]) where
+    SymHelp c (c ': cs) = 'Just '(c, cs)
+    SymHelp c d         = 'Nothing
+type instance RunParser (Sym c) cs = SymHelp c cs
+
+data NotSym :: SChar -> Parser SChar
+type family NotSymHelp (c :: SChar) (str :: [SChar]) :: Maybe (SChar, [SChar]) where
+    NotSymHelp c (c ': cs) = 'Nothing
+    NotSymHelp c (d ': cs) = 'Just '(d, cs)
+    NotSymHelp c '[]       = 'Nothing
+type instance RunParser (NotSym c) cs = NotSymHelp c cs
+
 data AnySym :: Parser SChar
-type family AnySymHelp (lst :: [SChar]) :: Maybe (SChar, [SChar]) where
+type family AnySymHelp (str :: [SChar]) :: Maybe (SChar, [SChar]) where
     AnySymHelp (c ': cs) = 'Just '(c, cs)
     AnySymHelp '[]       = 'Nothing
 type instance RunParser AnySym cs = AnySymHelp cs
@@ -59,7 +81,7 @@ type family ChoiceMaybe (x :: Maybe a) (y :: Maybe a) :: Maybe a where
     ChoiceMaybe 'Nothing  y = y
 type instance RunParser (x <|> y) str = ChoiceMaybe (RunParser x str) (RunParser y str)
 
-type Optional p = LiftCon1 'Just p <|> Pure 'Nothing
+type Optional p = ('Just <$> p) <|> Pure 'Nothing
 
 data (*>) :: Parser a -> Parser b -> Parser b
 type family SeqHelp (p :: Parser b) (r :: Maybe (a, [SChar])) :: Maybe (b, [SChar]) where
@@ -75,22 +97,22 @@ type family DigitHelp (d :: Maybe Nat) (cs :: [SChar]) :: Maybe (Nat, [SChar]) w
 type instance RunParser Digit '[]       = 'Nothing
 type instance RunParser Digit (c ': cs) = DigitHelp (CharDigit c) cs
 
-data LiftCon1 :: (a -> b) -> Parser a -> Parser b
-type family LiftCon1Help (f :: a -> b) (r :: Maybe (a, [SChar])) :: Maybe (b, [SChar]) where
-    LiftCon1Help f 'Nothing = 'Nothing
-    LiftCon1Help f ('Just '(x, str)) = 'Just '(f x, str)
-type instance RunParser (LiftCon1 f p) str = LiftCon1Help f (RunParser p str)
+data (<$>) :: (a -> b) -> Parser a -> Parser b
+type family MapConHelp (f :: a -> b) (r :: Maybe (a, [SChar])) :: Maybe (b, [SChar]) where
+    MapConHelp f 'Nothing = 'Nothing
+    MapConHelp f ('Just '(x, str)) = 'Just '(f x, str)
+type instance RunParser (f <$> p) str = MapConHelp f (RunParser p str)
 
-data LiftCon2 :: (a -> b -> c) -> Parser a -> Parser b -> Parser c
-type family LiftCon2Help (f :: a -> b -> c) (r :: Maybe (a, [SChar])) (q :: Parser b) :: Maybe (c, [SChar]) where
-    LiftCon2Help f 'Nothing          q = 'Nothing
-    LiftCon2Help f ('Just '(x, str)) q = RunParser (LiftCon1 (f x) q) str
-type instance RunParser (LiftCon2 f p q) str = LiftCon2Help f (RunParser p str) q
+data (<*>) :: Parser (a -> b) -> Parser a -> Parser b
+type family ApHelp (r :: Maybe (a -> b, [SChar])) (q :: Parser a) :: Maybe (b, [SChar]) where
+    ApHelp 'Nothing q          = 'Nothing
+    ApHelp ('Just '(f, str)) q = RunParser (f <$> q) str
+type instance RunParser (p <*> q) str = ApHelp (RunParser p str) q
 
 data Many :: Parser a -> Parser [a]
 type instance RunParser (Many p) str = RunParser (Some p <|> Pure '[]) str
 data Some :: Parser a -> Parser [a]
-type instance RunParser (Some p) str = RunParser (LiftCon2 '(:) p (Many p)) str
+type instance RunParser (Some p) str = RunParser ('(:) <$> p <*> Many p) str
 
 -- | Parse a number
 data Number :: Parser Nat
@@ -99,16 +121,31 @@ type family NumberHelp (xs :: Maybe ([Nat], [SChar])) :: Maybe (Nat, [SChar]) wh
     NumberHelp ('Just '(ns, str)) = 'Just '(FromDigits ns 0, str)
 type instance RunParser Number str = NumberHelp (RunParser (Many Digit) str)
 
+data Cat :: Parser [SChar] -> Parser Symbol
+type family CatHelp (xs :: Maybe ([SChar], [SChar])) :: Maybe (Symbol, [SChar]) where
+    CatHelp 'Nothing           = 'Nothing
+    CatHelp ('Just '(cs, str)) = 'Just '(CatChars cs, str)
+type instance RunParser (Cat p) str = CatHelp (RunParser p str)
 
-type SimpleFF = Sym "%" *> LiftCon2 'FF (Optional Number) AnySym
+data ParseFlags :: Parser Flags
+type instance RunParser ParseFlags str = 'Just (ProcessFlags ('Flags 'Nothing 'Nothing 'False) str)
 
--- type family ParseFF (lst :: [Symbol]) :: Maybe (FieldFormat, Symbol) where
---     ParseFF '[] = 'Nothing
---     ParseFF 
+type ParseWM = (Sym "h" *> (('WMhh <$ Sym "h") <|> Pure 'WMh))
+           <|> (Sym "l" *> (('WMll <$ Sym "l") <|> Pure 'WMl))
+           <|> ('WML <$ Sym "L")
 
--- type family Parse (lst :: [Symbol]) :: [Either Symbol FieldFormat] where
---     Parse '[] = '[]
---     Parse ("%" ': ())
+
+type ParseFF = Sym "%"
+            *> ('FF <$> ParseFlags
+                    <*> Optional Number
+                    <*> Optional (Sym "." *> Number)
+                    <*> Optional ParseWM
+                    <*> AnySym
+               )
+
+type ParseFmtStr = Many ( ('Left  <$> Cat (Some (NotSym "%")))
+                      <|> ('Right <$> ParseFF                )
+                        )
 
 type family CharDigit (c :: SChar) :: Maybe Nat where
     CharDigit "0" = 'Just 0
@@ -127,3 +164,24 @@ type family FromDigits (xs :: [Nat]) (n :: Nat) :: Nat where
     FromDigits '[]       n = n
     FromDigits (a ': bs) n = FromDigits bs (n * 10 + a)
 
+type family CatChars (cs :: [SChar]) :: Symbol where
+    CatChars '[]       = ""
+    CatChars (c ': cs) = AppendSymbol c (CatChars cs)
+
+type family ProcessFlags (f :: Flags) (str :: [SChar]) :: (Flags, [SChar]) where
+    ProcessFlags ('Flags d i l) ("-" ': cs) = '( 'Flags ('Just (UpdateAdjust d 'LeftAdjust)) i l, cs)
+    ProcessFlags ('Flags d i l) ("0" ': cs) = '( 'Flags ('Just (UpdateAdjust d 'ZeroPad   )) i l, cs)
+    ProcessFlags ('Flags d i l) ("+" ': cs) = '( 'Flags d ('Just (UpdateSign i 'SignPlus )) l, cs)
+    ProcessFlags ('Flags d i l) (" " ': cs) = '( 'Flags d ('Just (UpdateSign i 'SignSpace)) l, cs)
+    ProcessFlags ('Flags d i l) ("#" ': cs) = '( 'Flags d i 'True, cs)
+    ProcessFlags f              cs          = '(f, cs)
+
+type family UpdateAdjust d1 d2 where
+    UpdateAdjust 'Nothing            d2 = d2
+    UpdateAdjust ('Just 'LeftAdjust) d2 = 'LeftAdjust
+    UpdateAdjust ('Just 'ZeroPad   ) d2 = d2
+
+type family UpdateSign i1 i2 where
+    UpdateSign 'Nothing           i2 = i2
+    UpdateSign ('Just 'SignPlus ) i2 = 'SignPlus
+    UpdateSign ('Just 'SignSpace) i2 = i2
