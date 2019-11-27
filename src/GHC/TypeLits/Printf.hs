@@ -25,14 +25,15 @@
 -- Stability   : experimental
 -- Portability : non-portable
 --
--- An extensible and type-safe printf, matching the semantics of 'P.printf' from
--- "Text.Printf" in /base/.  The difference is that the variants here will
--- always fail to compile if given arguments of the wrong type (or too many
--- or too little arguments).  Most of the variants also provide useful type
--- feedback, telling you the type of arguments it expects and how many when
--- queried with @:t@ or with typed holes.  See documentation in
--- "Text.Printf" for details on how this formats items of various types,
--- and the differences with C @printf(3)@.
+-- An extensible and type-safe printf from parsing GHC TypeLits Symbol
+-- literals, matching the semantics of 'P.printf' from "Text.Printf" in
+-- /base/.  The difference is that the variants here will always fail to
+-- compile if given arguments of the wrong type (or too many or too little
+-- arguments).  Most of the variants also provide useful type feedback,
+-- telling you the type of arguments it expects and how many when queried
+-- with @:t@ or with typed holes.  See documentation in "Text.Printf" for
+-- details on how this formats items of various types, and the differences
+-- with C @printf(3)@.
 --
 -- Comparing their usage/calling conventions:
 --
@@ -44,7 +45,7 @@
 -- You have 3.62 dollars, Luigi
 --
 -- Now comparing their types:
--- 
+--
 -- >>> :t pprintf @"You have %.2f dollars, %s" 3.62 "Luigi"
 -- PP "f" -> PP "s" -> String
 -- >>> :t rprintf @"You have %.2f dollars, %s" 3.62 "Luigi"

@@ -4,12 +4,12 @@
 
 [symbols]: https://hackage.haskell.org/package/symbols-0.3.0.0/docs/Data-Symbol-Examples-Printf.html
 
-An extensible and type-safe printf, matching the semantics of *[Text.Printf][]*
-in *base*.  The difference is that the variants here will always fail to
-compile if given arguments of the wrong type (or too many or too little
-arguments). Most of the variants also provide useful type feedback, telling you
-the type of arguments it expects and how many when queried with `:t` or with
-typed holes.
+An extensible and type-safe printf from parsing GHC TypeLits Symbol literals,
+matching the semantics of *[Text.Printf][]* in *base*.  The difference is that
+the variants here will always fail to compile if given arguments of the wrong
+type (or too many or too little arguments). Most of the variants also provide
+useful type feedback, telling you the type of arguments it expects and how many
+when queried with `:t` or with typed holes.
 
 [Text.Printf]: https://hackage.haskell.org/package/base/docs/Text-Printf.html
 
