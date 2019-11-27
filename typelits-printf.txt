@@ -36,6 +36,7 @@ type ParseFmt_ str = EvalParser_ FFParser str
 data FormatAdjustment
 LeftAdjust :: FormatAdjustment
 ZeroPad :: FormatAdjustment
+type family ShowFormat (x :: k) :: Symbol
 
 -- | How to handle the sign of a numeric field. These are mutually
 --   exclusive, with <a>SignPlus</a> taking precedence.
@@ -172,7 +173,8 @@ printf_ :: Printf str fun => p str -> fun
 --   </pre>
 --   
 --   at which point you may use it as a <a>String</a> or <tt><a>IO</a>
---   <a>String</a></tt>, in the same way that <a>Text.Printf</a> works.
+--   ()</tt>, in the same way that <a>Text.Printf</a> works. We also
+--   support using strict <a>Text</a> lazy <a>Text</a> as well.
 --   
 --   Note that while it is somewhat possible to "reason with" or get type
 --   feedback from this (as shown above), it is nowhere near the level of
@@ -259,9 +261,24 @@ mkPFmt :: forall str lst ff f w q m c. (Listify str lst, 'Just ff ~ ParseFmt lst
 --   "3.62"
 --   </pre>
 mkPFmt_ :: forall str lst ff f w q m c p. (Listify str lst, 'Just ff ~ ParseFmt lst, Reflect ff, ff ~ 'FF f w q m c) => p str -> PFmt c
+newtype PHelp
+PHelp :: String -> PHelp
+[pHelp] :: PHelp -> String
 instance (Data.Symbol.Utils.Listify str lst, 'GHC.Maybe.Just ff GHC.Types.~ GHC.TypeLits.Printf.Parse.ParseFmt lst, GHC.TypeLits.Printf.Parse.Reflect ff, ff GHC.Types.~ 'GHC.TypeLits.Printf.Parse.FF f w p m c) => GHC.OverloadedLabels.IsLabel str (GHC.TypeLits.Printf.Internal.PFmt c)
 instance (Data.Symbol.Utils.Listify str lst, 'GHC.Maybe.Just ffs GHC.Types.~ GHC.TypeLits.Printf.Parse.ParseFmtStr lst, GHC.TypeLits.Printf.Internal.FormatFun ffs fun) => GHC.TypeLits.Printf.Internal.Printf str fun
-instance GHC.TypeLits.Printf.Internal.FormatFun '[] GHC.Base.String
+instance (TypeError ...) => GHC.TypeLits.Printf.Internal.FormatFun ('Data.Either.Right ff : ffs) GHC.Base.String
+instance (TypeError ...) => GHC.TypeLits.Printf.Internal.FormatFun ('Data.Either.Right ff : ffs) ()
+instance (TypeError ...) => GHC.TypeLits.Printf.Internal.FormatFun ('Data.Either.Right ff : ffs) Data.Text.Internal.Text
+instance (TypeError ...) => GHC.TypeLits.Printf.Internal.FormatFun ('Data.Either.Right ff : ffs) Data.Text.Internal.Lazy.Text
+instance (TypeError ...) => GHC.TypeLits.Printf.Internal.FormatFun ('Data.Either.Right ff : ffs) GHC.TypeLits.Printf.Internal.PHelp
+instance (TypeError ...) => GHC.TypeLits.Printf.Internal.FormatFun ('Data.Either.Right ff : ffs) (GHC.Types.IO a)
+instance (a GHC.Types.~ GHC.Types.Char) => GHC.TypeLits.Printf.Internal.FormatFun '[] GHC.TypeLits.Printf.Internal.PHelp
+instance (a GHC.Types.~ GHC.Types.Char) => GHC.TypeLits.Printf.Internal.FormatFun '[] [a]
+instance (a GHC.Types.~ GHC.Types.Char) => GHC.TypeLits.Printf.Internal.FormatFun '[] Data.Text.Internal.Text
+instance (a GHC.Types.~ GHC.Types.Char) => GHC.TypeLits.Printf.Internal.FormatFun '[] Data.Text.Internal.Lazy.Text
+instance (a GHC.Types.~ ()) => GHC.TypeLits.Printf.Internal.FormatFun '[] (GHC.Types.IO a)
+instance (TypeError ...) => GHC.TypeLits.Printf.Internal.FormatFun '[] ()
+instance (TypeError ...) => GHC.TypeLits.Printf.Internal.FormatFun '[] (a -> b)
 instance (GHC.TypeLits.KnownSymbol str, GHC.TypeLits.Printf.Internal.FormatFun ffs fun) => GHC.TypeLits.Printf.Internal.FormatFun ('Data.Either.Left str : ffs) fun
 instance (GHC.TypeLits.Printf.Parse.Reflect ff, ff GHC.Types.~ 'GHC.TypeLits.Printf.Parse.FF f w p m c, GHC.TypeLits.Printf.Internal.FormatType c a, GHC.TypeLits.Printf.Internal.FormatFun ffs fun) => GHC.TypeLits.Printf.Internal.FormatFun ('Data.Either.Right ff : ffs) (a -> fun)
 instance (Data.Symbol.Utils.Listify str lst, 'GHC.Maybe.Just ffs GHC.Types.~ GHC.TypeLits.Printf.Parse.ParseFmtStr lst, GHC.TypeLits.Printf.Internal.RFormat ffs ps) => GHC.TypeLits.Printf.Internal.RPrintf str ps
@@ -435,11 +452,36 @@ instance GHC.TypeLits.Printf.Internal.FormatType "v" Data.Text.Internal.Lazy.Tex
 --   tricky if you mess up. The up-side is that it is the cleanest to call
 --   if you already know what you need: you can just give the arguments
 --   plainly, like <tt>3.62</tt> and <tt><a>Luigi</a></tt>.</li>
+--   <li>The type of <a>printf</a> doesn't tell you immediately what you
+--   you need. However, if you do try to use it, the type errors will guide
+--   you along the way, iteratively.</li>
 --   </ul>
 --   
---   Debugging it might not be so fun, but at least all debugging is
---   compile-time: you won't be able to compile-it until it is correct, so
---   that means you won't be dealing with run-time errors.
+--   <pre>
+--   &gt;&gt;&gt; printf @"You have %.2f dollars, %s"
+--   -- ERROR: Call to printf missing argument fulfilling "%.2f"
+--   -- Either provide an argument or rewrite the format string to not expect
+--   -- one.
+--   </pre>
+--   
+--   <pre>
+--   &gt;&gt;&gt; printf @"You have %.2f dollars, %s" 3.62
+--   -- ERROR: Call to printf missing argument fulfilling "%s"
+--   -- Either provide an argument or rewrite the format string to not expect
+--   -- one.
+--   </pre>
+--   
+--   <pre>
+--   &gt;&gt;&gt; printf @"You have %.2f dollars, %s" 3.62 "Luigi"
+--   You have 3.62 dollars, Luigi
+--   </pre>
+--   
+--   <pre>
+--   &gt;&gt;&gt; printf @"You have %.2f dollars, %s" 3.62 "Luigi" 72
+--   -- ERROR: An extra argument of type Integer was given to a call to printf
+--   -- Either remove the argument, or rewrite the format string to include the
+--   -- appropriate hole.
+--   </pre>
 --   
 --   The following table summarizes the features and drawbacks of each
 --   method:
@@ -654,6 +696,10 @@ type FormatArgs = Rec PP
 --   version of this with "fake" polyarity, taking a list as input instead.
 --   Also see top-level module documentation <a>GHC.TypeLits.Printf</a> for
 --   a more comprehensive summary.
+--   
+--   Note that this also supports the "interpret as an IO action to print
+--   out results" functionality that <a>Text.Printf</a> supports. This also
+--   supports returning strict <a>Text</a> and lazy <a>Text</a> as well.
 printf :: forall str fun. Printf str fun => fun
 
 -- | A version of <a>printf</a> taking an explicit proxy, which allows
@@ -664,6 +710,8 @@ printf :: forall str fun. Printf str fun => fun
 --   You have 3.62 dollars, Luigi
 --   </pre>
 printf_ :: Printf str fun => p str -> fun
+data PHelp
+pHelp :: PHelp -> String
 
 -- | The typeclass supporting polyarity used by <a>printf</a>. It works in
 --   mostly the same way as <a>PrintfType</a> from <a>Text.Printf</a>, and
@@ -697,7 +745,8 @@ printf_ :: Printf str fun => p str -> fun
 --   </pre>
 --   
 --   at which point you may use it as a <a>String</a> or <tt><a>IO</a>
---   <a>String</a></tt>, in the same way that <a>Text.Printf</a> works.
+--   ()</tt>, in the same way that <a>Text.Printf</a> works. We also
+--   support using strict <a>Text</a> lazy <a>Text</a> as well.
 --   
 --   Note that while it is somewhat possible to "reason with" or get type
 --   feedback from this (as shown above), it is nowhere near the level of
