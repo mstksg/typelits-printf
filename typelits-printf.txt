@@ -109,6 +109,10 @@ instance GHC.TypeLits.KnownSymbol n => GHC.TypeLits.Printf.Parse.Reflect n
 instance (GHC.TypeLits.Printf.Parse.Reflect d, GHC.TypeLits.Printf.Parse.Reflect i, GHC.TypeLits.Printf.Parse.Reflect l) => GHC.TypeLits.Printf.Parse.Reflect ('GHC.TypeLits.Printf.Parse.Flags d i l)
 instance (GHC.TypeLits.Printf.Parse.Reflect flags, GHC.TypeLits.Printf.Parse.Reflect width, GHC.TypeLits.Printf.Parse.Reflect prec, GHC.TypeLits.Printf.Parse.Reflect mods, GHC.TypeLits.Printf.Parse.Reflect chr) => GHC.TypeLits.Printf.Parse.Reflect ('GHC.TypeLits.Printf.Parse.FF flags width prec mods chr)
 
+
+-- | Master table comparing the different methods:
+--   
+--   TODO: table
 module GHC.TypeLits.Printf
 
 -- | Typeclass associating format types (<tt>d</tt>, <tt>f</tt>, etc.) with
