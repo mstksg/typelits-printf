@@ -7,6 +7,7 @@
 {-# LANGUAGE KindSignatures         #-}
 {-# LANGUAGE LambdaCase             #-}
 {-# LANGUAGE MultiParamTypeClasses  #-}
+{-# LANGUAGE PatternSynonyms        #-}
 {-# LANGUAGE RankNTypes             #-}
 {-# LANGUAGE ScopedTypeVariables    #-}
 {-# LANGUAGE TypeApplications       #-}
@@ -15,17 +16,22 @@
 {-# LANGUAGE TypeOperators          #-}
 {-# LANGUAGE UndecidableInstances   #-}
 
-module GHC.TypeLits.Printf where
+module GHC.TypeLits.Printf (
+    FormatChar(..)
+  , P(..)
+  , printf, printf_
+  , Rec((:%), RNil)
+  , rprintf, rprintf_
+  , floop
+  ) where
 
+import           Data.Vinyl.Curry
+-- import           Data.Vinyl.Functor
 import           Data.Int
-import           Data.Kind
 import           Data.Proxy
 import           Data.Symbol.Utils
 import           Data.Vinyl
-import           Data.Vinyl.Curry
-import           Data.Vinyl.Functor
 import           Data.Word
-import           GHC.Exts
 import           GHC.TypeLits
 import           GHC.TypeLits.Printf.Parse
 import           Numeric.Natural
@@ -42,7 +48,10 @@ class FormatChar (t :: SChar) a where
     format _ = P.formatArg
 
 instance FormatChar "c" Char
+instance FormatChar "c" Word8
+instance FormatChar "c" Word16
 
+instance FormatChar "d" Char
 instance FormatChar "d" Int
 instance FormatChar "d" Int8
 instance FormatChar "d" Int16
@@ -56,6 +65,7 @@ instance FormatChar "d" Word16
 instance FormatChar "d" Word32
 instance FormatChar "d" Word64
 
+instance FormatChar "o" Char
 instance FormatChar "o" Int
 instance FormatChar "o" Int8
 instance FormatChar "o" Int16
@@ -82,6 +92,7 @@ instance FormatChar "x" Word16
 instance FormatChar "x" Word32
 instance FormatChar "x" Word64
 
+instance FormatChar "X" Char
 instance FormatChar "X" Int
 instance FormatChar "X" Int8
 instance FormatChar "X" Int16
@@ -95,6 +106,7 @@ instance FormatChar "X" Word16
 instance FormatChar "X" Word32
 instance FormatChar "X" Word64
 
+instance FormatChar "b" Char
 instance FormatChar "b" Int
 instance FormatChar "b" Int8
 instance FormatChar "b" Int16
@@ -108,6 +120,7 @@ instance FormatChar "b" Word16
 instance FormatChar "b" Word32
 instance FormatChar "b" Word64
 
+instance FormatChar "u" Char
 instance FormatChar "u" Int
 instance FormatChar "u" Int8
 instance FormatChar "u" Int16
@@ -171,4 +184,40 @@ instance (Listify str lst, 'Just ffs ~ ParseFmtStr lst, FormatF ffs fun) => Prin
 
 printf :: forall str fun. Printf str fun => fun
 printf = printf_ (Proxy @str)
+
+class FormatR (ffs :: [Either Symbol FieldFormat]) (ps :: [SChar]) | ffs -> ps where
+    formatR :: p ffs -> Rec P ps -> ShowS
+
+instance FormatR '[] '[] where
+    formatR _ _ = id
+
+instance (KnownSymbol str, FormatR ffs ps) => FormatR ('Left str ': ffs) ps where
+    formatR _ r = showString (symbolVal (Proxy @str))
+                . formatR (Proxy @ffs) r
+
+instance (Reflect ff, ff ~ 'FF f w p m c, FormatR ffs ps) => FormatR ('Right ff ': ffs) (c ': ps) where
+    formatR _ = \case
+        P x :& xs -> format (Proxy @c) x ff
+                   . formatR (Proxy @ffs) xs
+      where
+        ff = reflect (Proxy @ff)
+
+class RPrintf (str :: Symbol) ps where
+    rprintf_ :: p str -> Rec P ps -> String
+
+instance (Listify str lst, 'Just ffs ~ ParseFmtStr lst, FormatR ffs ps) => RPrintf str ps where
+    rprintf_ _ = ($ "") . formatR (Proxy @ffs)
+
+rprintf :: forall str ps. RPrintf str ps => Rec P ps -> String
+rprintf = rprintf_ (Proxy @str)
+
+pattern (:%) :: () => FormatChar c a => a -> Rec P cs -> Rec P (c ': cs)
+pattern x :% xs = P x :& xs
+infixr 7 :%
+
+floop_ :: forall str ps p. (RPrintf str ps, RecordCurry ps) => p str -> CurriedF P ps String
+floop_ p = rcurry @ps (rprintf_ p)
+
+floop :: forall str ps. (RPrintf str ps, RecordCurry ps) => CurriedF P ps String
+floop = floop_ @str @ps (Proxy @str)
 

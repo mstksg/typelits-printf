@@ -22,7 +22,7 @@ description:         Please see the README on GitHub at <https://github.com/mstk
 ghc-options:
 - -Wall
 - -Wcompat
-- -Wredundant-constraints
+# - -Wredundant-constraints
 - -Werror=incomplete-patterns
 
 dependencies:
