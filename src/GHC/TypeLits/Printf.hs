@@ -19,18 +19,22 @@
 module GHC.TypeLits.Printf (
     FormatChar(..)
   , P(..)
-  , printf, printf_
+  , pprintf, pprintf_
   , Rec((:%), RNil)
   , rprintf, rprintf_
-  , floop
+  , HFormat
+  , hprintf, hprintf_
+  , printf, printf_
+  , FormatF
   ) where
 
-import           Data.Vinyl.Curry
--- import           Data.Vinyl.Functor
 import           Data.Int
+import           Data.Kind
 import           Data.Proxy
 import           Data.Symbol.Utils
 import           Data.Vinyl
+import           Data.Vinyl.Curry
+import           Data.Vinyl.Functor
 import           Data.Word
 import           GHC.TypeLits
 import           GHC.TypeLits.Printf.Parse
@@ -38,8 +42,6 @@ import           Numeric.Natural
 import qualified Data.Text                 as T
 import qualified Data.Text.Lazy            as TL
 import qualified Text.Printf               as P
-
--- data CType c = forall a. c a => C a
 
 class FormatChar (t :: SChar) a where
     format :: p t -> a -> P.FieldFormat -> ShowS
@@ -160,21 +162,70 @@ instance FormatChar "s" TL.Text where
 
 data P (c :: SChar) = forall a. FormatChar c a => P a
 
-class FormatF (ffs :: [Either Symbol FieldFormat]) fun | ffs -> fun where
+class RFormat (ffs :: [Either Symbol FieldFormat]) (ps :: [SChar]) | ffs -> ps where
+    rformat :: p ffs -> Rec P ps -> ShowS
+
+instance RFormat '[] '[] where
+    rformat _ _ = id
+
+instance (KnownSymbol str, RFormat ffs ps) => RFormat ('Left str ': ffs) ps where
+    rformat _ r = showString (symbolVal (Proxy @str))
+                . rformat (Proxy @ffs) r
+
+instance (Reflect ff, ff ~ 'FF f w p m c, RFormat ffs ps) => RFormat ('Right ff ': ffs) (c ': ps) where
+    rformat _ (x :% xs) = format (Proxy @c) x ff
+                        . rformat (Proxy @ffs) xs
+      where
+        ff = reflect (Proxy @ff)
+
+class RPrintf (str :: Symbol) ps where
+    rprintf_ :: p str -> Rec P ps -> String
+
+instance (Listify str lst, 'Just ffs ~ ParseFmtStr lst, RFormat ffs ps) => RPrintf str ps where
+    rprintf_ _ = ($ "") . rformat (Proxy @ffs)
+
+rprintf :: forall str ps. RPrintf str ps => Rec P ps -> String
+rprintf = rprintf_ (Proxy @str)
+
+pattern (:%) :: () => FormatChar c a => a -> Rec P cs -> Rec P (c ': cs)
+pattern x :% xs = P x :& xs
+infixr 7 :%
+{-# COMPLETE (:%) #-}
+
+pprintf_ :: forall str ps p. (RPrintf str ps, RecordCurry ps) => p str -> CurriedF P ps String
+pprintf_ p = rcurry @ps (rprintf_ p)
+
+pprintf :: forall str ps. (RPrintf str ps, RecordCurry ps) => CurriedF P ps String
+pprintf = pprintf_ @str @ps (Proxy @str)
+
+class HFormat (ps :: [SChar]) (as :: [Type]) where
+    hformat :: HList as -> Rec P ps
+
+instance HFormat '[] '[] where
+    hformat _ = RNil
+
+instance (FormatChar c a, HFormat cs as) => HFormat (c ': cs) (a ': as) where
+    hformat (Identity x :& xs) = P x :& hformat xs
+
+hprintf_ :: forall str ps as p. (RPrintf str ps, HFormat ps as) => p str -> HList as -> String
+hprintf_ p = rprintf_ p . hformat @ps
+
+hprintf :: forall str ps as. (RPrintf str ps, HFormat ps as) => HList as -> String
+hprintf = hprintf_ @str @ps (Proxy @str)
+
+class FormatF (ffs :: [Either Symbol FieldFormat]) fun where
     formatF :: p ffs -> String -> fun
 
 instance FormatF '[] String where
     formatF _ = id
 
 instance (KnownSymbol str, FormatF ffs fun) => FormatF ('Left str ': ffs) fun where
-    formatF _ = formatF (Proxy @ffs)
-                    . (<> symbolVal (Proxy @str))
+    formatF _ str = formatF (Proxy @ffs) (str ++ symbolVal (Proxy @str))
 
-instance (Reflect ff, ff ~ 'FF f w p m c, FormatF ffs fun) => FormatF ('Right ff ': ffs) (P c -> fun) where
-    formatF _ str (P x) = formatF (Proxy @ffs)
-                              $ str <> format (Proxy @c) x ff ""
-        where
-          ff = reflect (Proxy @ff)
+instance (Reflect ff, ff ~ 'FF f w p m c, FormatChar c a, FormatF ffs fun) => FormatF ('Right ff ': ffs) (a -> fun) where
+    formatF _ str x = formatF (Proxy @ffs) (str ++ format (Proxy @c) x ff "")
+      where
+        ff = reflect (Proxy @ff)
 
 class Printf (str :: Symbol) fun where
     printf_ :: p str -> fun
@@ -184,40 +235,4 @@ instance (Listify str lst, 'Just ffs ~ ParseFmtStr lst, FormatF ffs fun) => Prin
 
 printf :: forall str fun. Printf str fun => fun
 printf = printf_ (Proxy @str)
-
-class FormatR (ffs :: [Either Symbol FieldFormat]) (ps :: [SChar]) | ffs -> ps where
-    formatR :: p ffs -> Rec P ps -> ShowS
-
-instance FormatR '[] '[] where
-    formatR _ _ = id
-
-instance (KnownSymbol str, FormatR ffs ps) => FormatR ('Left str ': ffs) ps where
-    formatR _ r = showString (symbolVal (Proxy @str))
-                . formatR (Proxy @ffs) r
-
-instance (Reflect ff, ff ~ 'FF f w p m c, FormatR ffs ps) => FormatR ('Right ff ': ffs) (c ': ps) where
-    formatR _ = \case
-        P x :& xs -> format (Proxy @c) x ff
-                   . formatR (Proxy @ffs) xs
-      where
-        ff = reflect (Proxy @ff)
-
-class RPrintf (str :: Symbol) ps where
-    rprintf_ :: p str -> Rec P ps -> String
-
-instance (Listify str lst, 'Just ffs ~ ParseFmtStr lst, FormatR ffs ps) => RPrintf str ps where
-    rprintf_ _ = ($ "") . formatR (Proxy @ffs)
-
-rprintf :: forall str ps. RPrintf str ps => Rec P ps -> String
-rprintf = rprintf_ (Proxy @str)
-
-pattern (:%) :: () => FormatChar c a => a -> Rec P cs -> Rec P (c ': cs)
-pattern x :% xs = P x :& xs
-infixr 7 :%
-
-floop_ :: forall str ps p. (RPrintf str ps, RecordCurry ps) => p str -> CurriedF P ps String
-floop_ p = rcurry @ps (rprintf_ p)
-
-floop :: forall str ps. (RPrintf str ps, RecordCurry ps) => CurriedF P ps String
-floop = floop_ @str @ps (Proxy @str)
 
