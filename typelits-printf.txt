@@ -193,7 +193,7 @@ type FormatArgs = Rec PP
 --   provide a <a>Double</a> and a <a>String</a>:
 --   
 --   <pre>
---   &gt;&gt;&gt; putStrLn $ 'rprintf' @"You have %.2f dollars, %s" (3.62 ':%' "Luigi" :% 'RNil')
+--   &gt;&gt;&gt; putStrLn $ rprintf @"You have %.2f dollars, %s" (3.62 ':%' "Luigi" :% 'RNil')
 --   You have 3.62 dollars, Luigi
 --   </pre>
 --   

@@ -290,7 +290,7 @@ forall k (t :: k). Proxy t
 </span><span id="line-212"></span><span class="hs-comment">-- and something that can be printed with @s@.  We can provide a 'Double'</span><span>
 </span><span id="line-213"></span><span class="hs-comment">-- and a 'String':</span><span>
 </span><span id="line-214"></span><span class="hs-comment">--</span><span>
-</span><span id="line-215"></span><span class="hs-comment">-- &gt;&gt;&gt; putStrLn $ 'rprintf' @&quot;You have %.2f dollars, %s&quot; (3.62 ':%' &quot;Luigi&quot; :% 'RNil')</span><span>
+</span><span id="line-215"></span><span class="hs-comment">-- &gt;&gt;&gt; putStrLn $ rprintf @&quot;You have %.2f dollars, %s&quot; (3.62 ':%' &quot;Luigi&quot; :% 'RNil')</span><span>
 </span><span id="line-216"></span><span class="hs-comment">-- You have 3.62 dollars, Luigi</span><span>
 </span><span id="line-217"></span><span class="hs-comment">--</span><span>
 </span><span id="line-218"></span><span class="hs-comment">-- See 'pprintf' for a version with true polyarity and good clear types,</span><span>

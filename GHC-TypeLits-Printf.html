@@ -25,7 +25,7 @@
 </code></strong>FormatArgs '[&quot;f&quot;, &quot;s&quot;] -&gt; String
 </pre><p>This means that it is expecting something that can be printed with <code>f</code>
  and something that can be printed with <code>s</code>.  We can provide a <code><a href="../base-4.13.0.0/Prelude.html#t:Double" title="Prelude">Double</a></code>
- and a <code><a href="../base-4.13.0.0/Data-String.html#t:String" title="Data.String">String</a></code>:</p><pre class="screen"><code class="prompt">&gt;&gt;&gt; </code><strong class="userinput"><code>putStrLn $ 'rprintf' @&quot;You have %.2f dollars, %s&quot; (3.62 ':%' &quot;Luigi&quot; :% 'RNil')
+ and a <code><a href="../base-4.13.0.0/Data-String.html#t:String" title="Data.String">String</a></code>:</p><pre class="screen"><code class="prompt">&gt;&gt;&gt; </code><strong class="userinput"><code>putStrLn $ rprintf @&quot;You have %.2f dollars, %s&quot; (3.62 ':%' &quot;Luigi&quot; :% 'RNil')
 </code></strong>You have 3.62 dollars, Luigi
 </pre><p>See <code><a href="GHC-TypeLits-Printf.html#v:pprintf" title="GHC.TypeLits.Printf">pprintf</a></code> for a version with true polyarity and good clear types,
  but requires wrapping its arguments, and <code><a href="GHC-TypeLits-Printf.html#v:printf" title="GHC.TypeLits.Printf">printf</a></code> for a version with
