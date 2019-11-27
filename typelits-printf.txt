@@ -19,6 +19,370 @@
 @version 0.1.0.0
 
 
+-- | Internal workings of the printf mechanisms, exposed for potential
+--   debugging purposes.
+--   
+--   Please do not use this module for anything besides debugging, as is
+--   definitely very unstable and might go away or change dramatically
+--   between versions.
+module GHC.TypeLits.Printf.Internal
+type ParseFmtStr str = EvalParser FmtStrParser str
+type ParseFmtStr_ str = EvalParser_ FmtStrParser str
+type ParseFmt str = EvalParser FFParser str
+type ParseFmt_ str = EvalParser_ FFParser str
+
+-- | Whether to left-adjust or zero-pad a field. These are mutually
+--   exclusive, with <a>LeftAdjust</a> taking precedence.
+data FormatAdjustment
+LeftAdjust :: FormatAdjustment
+ZeroPad :: FormatAdjustment
+
+-- | How to handle the sign of a numeric field. These are mutually
+--   exclusive, with <a>SignPlus</a> taking precedence.
+data FormatSign
+SignPlus :: FormatSign
+SignSpace :: FormatSign
+data WidthMod
+WMhh :: WidthMod
+WMh :: WidthMod
+WMl :: WidthMod
+WMll :: WidthMod
+WML :: WidthMod
+data Flags
+Flags :: Maybe FormatAdjustment -> Maybe FormatSign -> Bool -> Flags
+[fAdjust] :: Flags -> Maybe FormatAdjustment
+[fSign] :: Flags -> Maybe FormatSign
+[fAlternate] :: Flags -> Bool
+type EmptyFlags = 'Flags 'Nothing 'Nothing 'False
+data FieldFormat
+FF :: Flags -> Maybe Nat -> Maybe Nat -> Maybe WidthMod -> SChar -> FieldFormat
+[fmtFlags] :: FieldFormat -> Flags
+[fmtWidth] :: FieldFormat -> Maybe Nat
+[fmtPrecision] :: FieldFormat -> Maybe Nat
+[fmtWidthMod] :: FieldFormat -> Maybe WidthMod
+[fmtChar] :: FieldFormat -> SChar
+
+-- | A type synonym for a single-character symbol. Ideally this would just
+--   be <a>Char</a>, but we don't have chars at the type level. So, if you
+--   see <a>SChar</a> in a type signature, it means that it's expected to
+--   be a symbol/string with only one single character.
+type SChar = Symbol
+type family Demote k = a | a -> k
+class Reflect (x :: a)
+reflect :: Reflect x => p x -> Demote a
+
+-- | Typeclass associating format types (<tt>d</tt>, <tt>f</tt>, etc.) with
+--   the types that can be formatted by them.
+--   
+--   You can extend the printf methods here for your own types by writing
+--   your instances here.
+class FormatType (t :: SChar) a
+formatArg :: FormatType t a => p t -> a -> FieldFormat -> ShowS
+formatArg :: (FormatType t a, PrintfArg a) => p t -> a -> FieldFormat -> ShowS
+
+-- | Required wrapper around inputs to <a>pprintf</a> (guarded polyarity).
+--   See documentation for <a>pprintf</a> for examples of usage.
+--   
+--   You can "wrap" any value in <a>PP</a> as long as it can be formatted
+--   as the format type indicated.
+--   
+--   For example, to make a <tt><a>PP</a> "f"</tt>, you can use
+--   <tt><a>PP</a> 3.5</tt> or <tt><a>PP</a> 94.2</tt>, but not
+--   <tt><a>PP</a> (3 :: Int)</tt> or <tt><a>PP</a> "hello"</tt>. To make a
+--   value of type <tt><a>PP</a> c</tt>, you must wrap a value that can be
+--   formatted via <tt>c</tt>.
+data PP (c :: SChar)
+PP :: a -> PP (c :: SChar)
+class RPrintf (str :: Symbol) ps
+
+-- | A version of <a>rprintf</a> taking an explicit proxy, which allows
+--   usage without <i>TypeApplications</i>
+--   
+--   <pre>
+--   &gt;&gt;&gt; :t rprintf_ (Proxy :: Proxy "You have %.2f dollars, %s")
+--   FormatArgs '["f", "s"] -&gt; String
+--   </pre>
+rprintf_ :: RPrintf str ps => p str -> FormatArgs ps -> String
+
+-- | A heterogeneous list (from <a>Data.Vinyl.Core</a>) used for calling
+--   with <a>rprintf</a>. Instead of supplying the inputs as different
+--   arguments, we can gather all the inputs into a single list to give to
+--   <a>rprintf</a>.
+--   
+--   <pre>
+--   &gt;&gt;&gt; :t rprintf @"You have %.2f dollars, %s"
+--   FormatArgs '["f", "s"] -&gt; String
+--   </pre>
+--   
+--   To construct a <tt><a>FormatArgs</a> '["f", "s"]</tt>, you need to
+--   give a value formattable by <tt>f</tt> and a value formattable by
+--   <tt>s</tt>, given like a linked list, with <a>:%</a> for cons and
+--   <a>RNil</a> for nil.
+--   
+--   <pre>
+--   &gt;&gt;&gt; putStrLn $ rprintf @"You have %.2f dollars, %s" (3.62 :% "Luigi" :% RNil)
+--   You have 3.62 dollars, Luigi
+--   </pre>
+--   
+--   (This should evoke the idea of of <tt>3.62 : <a>Luigi</a> : []</tt>,
+--   even though the latter is not possible in Haskell)
+type FormatArgs = Rec PP
+class RFormat (ffs :: [Either Symbol FieldFormat]) (ps :: [SChar]) | ffs -> ps
+rformat :: RFormat ffs ps => p ffs -> FormatArgs ps -> ShowS
+class Printf (str :: Symbol) fun
+
+-- | A version of <a>printf</a> taking an explicit proxy, which allows
+--   usage without <i>TypeApplications</i>
+--   
+--   <pre>
+--   &gt;&gt;&gt; putStrLn $ printf_ (Proxy :: Proxy "You have %.2f dollars, %s") 3.62 "Luigi"
+--   You have 3.62 dollars, Luigi
+--   </pre>
+printf_ :: Printf str fun => p str -> fun
+
+-- | The typeclass supporting polyarity used by <a>printf</a>. It works in
+--   mostly the same way as <a>PrintfType</a> from <a>Text.Printf</a>, and
+--   similar the same as <a>FormatF</a>.
+--   
+--   Ideally, you will never have to run into this typeclass or have to
+--   deal with it. It will come up if you ask for the type of
+--   <a>printf</a>, or if you give the wrong number or type of arguments to
+--   it.
+--   
+--   <pre>
+--   &gt;&gt;&gt; :t printf @"You have %.2f dollars, %s"
+--   FormatFun '[ Right ..., 'Left " dollars ", 'Right ...] fun =&gt; fun
+--   </pre>
+--   
+--   Every item in the first argument of <a>FormatFun</a> is a chunk of the
+--   formatting string, split between format holes (<a>Right</a>) and
+--   string chunks (<a>Left</a>). You can successively "eliminate" them by
+--   providing more arguments that implement each hole:
+--   
+--   <pre>
+--   &gt;&gt;&gt; :t printf @"You have %.2f dollars, %s" 3.62
+--   FormatFun '[ Right ...] fun =&gt; fun
+--   </pre>
+--   
+--   Until you you finally fill all the holes:
+--   
+--   <pre>
+--   &gt;&gt;&gt; :t printf @"You have %.2f dollars, %s" 3.62 "Luigi"
+--   FormatFun '[] t =&gt; t
+--   </pre>
+--   
+--   at which point you may use it as a <a>String</a> or <tt><a>IO</a>
+--   <a>String</a></tt>, in the same way that <a>Text.Printf</a> works.
+--   
+--   Note that while it is somewhat possible to "reason with" or get type
+--   feedback from this (as shown above), it is nowhere near the level of
+--   clarity as <a>pprintf</a> or <a>rprintf</a>. And, if things go wrong
+--   (like passing too many or too little arguments, or arguments of the
+--   wrong type), the error messages are not going to be as useful.
+--   However, there are some measures put into place to make type errors
+--   more feasible for debugging, and I'm open for suggestions for
+--   improvement methods, as well!
+--   
+--   Some guidelines for making sure the type-checking and debugging story
+--   goes as nicely as possible:
+--   
+--   <ul>
+--   <li>Make sure the result type is always known monomorphically.
+--   Sometimes this means requiring an explicit annotation, like <tt>printf
+--   ... :: String</tt>.</li>
+--   <li>Make sure all the values you give to this have known monomorphic
+--   types, as well.</li>
+--   </ul>
+class FormatFun (ffs :: [Either Symbol FieldFormat]) fun
+formatFun :: FormatFun ffs fun => p ffs -> String -> fun
+
+-- | Utility type powering <a>pfmt</a>. See dcumentation for <a>pfmt</a>
+--   for more information on usage.
+--   
+--   Using <i>OverloadedLabels</i>, you never need to construct this
+--   directly can just write <tt>#f</tt> and a <tt><a>PFmt</a> "f"</tt>
+--   will be generated. You can also create this using <a>mkPFmt</a> or
+--   <a>mkPFmt_</a>, in the situations where <i>OverloadedLabels</i>
+--   doesn't work or is not wanted.
+newtype PFmt c
+PFmt :: FieldFormat -> PFmt c
+
+-- | Parse and run a <i>single</i> format hole on a single vale. Can be
+--   useful for formatting individual items or for testing your own custom
+--   instances of <a>FormatType</a>.
+--   
+--   Usually meant to be used with <i>OverloadedLabels</i>:
+--   
+--   <pre>
+--   &gt;&gt;&gt; pfmt #f 3.62
+--   "3.62"
+--   </pre>
+--   
+--   However, current versions of GHC disallow labels that aren't valid
+--   identifier names, disallowing things like <tt><a>pfmt</a> #.2f
+--   3.62</tt>. While there is an
+--   &lt;<a>https://github.com/ghc-proposals/ghc-proposals/blob/master/proposals/0170-unrestricted-overloadedlabels.rst</a>
+--   approved proposal&gt; that allows this, if you are using an earlier
+--   GHC version, you can get around this using <a>mkPFmt</a>:
+--   
+--   <pre>
+--   &gt;&gt;&gt; pfmt (mkPFmt @".2f") 3.6234124
+--   "3.62"
+--   </pre>
+--   
+--   Ideally we'd want to be able to write
+--   
+--   <pre>
+--   &gt;&gt;&gt; pfmt #.2f 3.6234124
+--   "3.62"
+--   </pre>
+--   
+--   (which should be possible in GHC 8.10+)
+--   
+--   Note that the format string does not include the leading <tt>%</tt>.
+pfmt :: forall c a. FormatType c a => PFmt c -> a -> String
+
+-- | Useful for using <a>pfmt</a> without <i>OverloadedLabels</i>, or also
+--   when passing format specifiers that aren't currently allowed with
+--   <i>OverloadedLabels</i> until GHC 8.10+ (like <tt>#.2f</tt>).
+--   
+--   <pre>
+--   &gt;&gt;&gt; pfmt (mkPFmt @".2f") 3.6234124
+--   "3.62"
+--   </pre>
+mkPFmt :: forall str lst ff f w q m c. (Listify str lst, 'Just ff ~ ParseFmt lst, Reflect ff, ff ~ 'FF f w q m c) => PFmt c
+
+-- | A version of <a>mkPFmt</a> that takes an explicit proxy input.
+--   
+--   <pre>
+--   &gt;&gt;&gt; pfmt (mkPFmt_ (Proxy :: Proxy ".2f") 3.6234124
+--   "3.62"
+--   </pre>
+mkPFmt_ :: forall str lst ff f w q m c p. (Listify str lst, 'Just ff ~ ParseFmt lst, Reflect ff, ff ~ 'FF f w q m c) => p str -> PFmt c
+instance (Data.Symbol.Utils.Listify str lst, 'GHC.Maybe.Just ff GHC.Types.~ GHC.TypeLits.Printf.Parse.ParseFmt lst, GHC.TypeLits.Printf.Parse.Reflect ff, ff GHC.Types.~ 'GHC.TypeLits.Printf.Parse.FF f w p m c) => GHC.OverloadedLabels.IsLabel str (GHC.TypeLits.Printf.Internal.PFmt c)
+instance (Data.Symbol.Utils.Listify str lst, 'GHC.Maybe.Just ffs GHC.Types.~ GHC.TypeLits.Printf.Parse.ParseFmtStr lst, GHC.TypeLits.Printf.Internal.FormatFun ffs fun) => GHC.TypeLits.Printf.Internal.Printf str fun
+instance GHC.TypeLits.Printf.Internal.FormatFun '[] GHC.Base.String
+instance (GHC.TypeLits.KnownSymbol str, GHC.TypeLits.Printf.Internal.FormatFun ffs fun) => GHC.TypeLits.Printf.Internal.FormatFun ('Data.Either.Left str : ffs) fun
+instance (GHC.TypeLits.Printf.Parse.Reflect ff, ff GHC.Types.~ 'GHC.TypeLits.Printf.Parse.FF f w p m c, GHC.TypeLits.Printf.Internal.FormatType c a, GHC.TypeLits.Printf.Internal.FormatFun ffs fun) => GHC.TypeLits.Printf.Internal.FormatFun ('Data.Either.Right ff : ffs) (a -> fun)
+instance (Data.Symbol.Utils.Listify str lst, 'GHC.Maybe.Just ffs GHC.Types.~ GHC.TypeLits.Printf.Parse.ParseFmtStr lst, GHC.TypeLits.Printf.Internal.RFormat ffs ps) => GHC.TypeLits.Printf.Internal.RPrintf str ps
+instance GHC.TypeLits.Printf.Internal.RFormat '[] '[]
+instance (GHC.TypeLits.KnownSymbol str, GHC.TypeLits.Printf.Internal.RFormat ffs ps) => GHC.TypeLits.Printf.Internal.RFormat ('Data.Either.Left str : ffs) ps
+instance (GHC.TypeLits.Printf.Parse.Reflect ff, ff GHC.Types.~ 'GHC.TypeLits.Printf.Parse.FF f w p m c, GHC.TypeLits.Printf.Internal.RFormat ffs ps) => GHC.TypeLits.Printf.Internal.RFormat ('Data.Either.Right ff : ffs) (c : ps)
+instance GHC.TypeLits.Printf.Internal.FormatType "c" GHC.Types.Char
+instance GHC.TypeLits.Printf.Internal.FormatType "c" GHC.Word.Word8
+instance GHC.TypeLits.Printf.Internal.FormatType "c" GHC.Word.Word16
+instance GHC.TypeLits.Printf.Internal.FormatType "d" GHC.Types.Char
+instance GHC.TypeLits.Printf.Internal.FormatType "d" GHC.Types.Int
+instance GHC.TypeLits.Printf.Internal.FormatType "d" GHC.Int.Int8
+instance GHC.TypeLits.Printf.Internal.FormatType "d" GHC.Int.Int16
+instance GHC.TypeLits.Printf.Internal.FormatType "d" GHC.Int.Int32
+instance GHC.TypeLits.Printf.Internal.FormatType "d" GHC.Int.Int64
+instance GHC.TypeLits.Printf.Internal.FormatType "d" GHC.Integer.Type.Integer
+instance GHC.TypeLits.Printf.Internal.FormatType "d" GHC.Natural.Natural
+instance GHC.TypeLits.Printf.Internal.FormatType "d" GHC.Types.Word
+instance GHC.TypeLits.Printf.Internal.FormatType "d" GHC.Word.Word8
+instance GHC.TypeLits.Printf.Internal.FormatType "d" GHC.Word.Word16
+instance GHC.TypeLits.Printf.Internal.FormatType "d" GHC.Word.Word32
+instance GHC.TypeLits.Printf.Internal.FormatType "d" GHC.Word.Word64
+instance GHC.TypeLits.Printf.Internal.FormatType "o" GHC.Types.Char
+instance GHC.TypeLits.Printf.Internal.FormatType "o" GHC.Types.Int
+instance GHC.TypeLits.Printf.Internal.FormatType "o" GHC.Int.Int8
+instance GHC.TypeLits.Printf.Internal.FormatType "o" GHC.Int.Int16
+instance GHC.TypeLits.Printf.Internal.FormatType "o" GHC.Int.Int32
+instance GHC.TypeLits.Printf.Internal.FormatType "o" GHC.Int.Int64
+instance GHC.TypeLits.Printf.Internal.FormatType "o" GHC.Integer.Type.Integer
+instance GHC.TypeLits.Printf.Internal.FormatType "o" GHC.Natural.Natural
+instance GHC.TypeLits.Printf.Internal.FormatType "o" GHC.Types.Word
+instance GHC.TypeLits.Printf.Internal.FormatType "o" GHC.Word.Word8
+instance GHC.TypeLits.Printf.Internal.FormatType "o" GHC.Word.Word16
+instance GHC.TypeLits.Printf.Internal.FormatType "o" GHC.Word.Word32
+instance GHC.TypeLits.Printf.Internal.FormatType "o" GHC.Word.Word64
+instance GHC.TypeLits.Printf.Internal.FormatType "x" GHC.Types.Int
+instance GHC.TypeLits.Printf.Internal.FormatType "x" GHC.Int.Int8
+instance GHC.TypeLits.Printf.Internal.FormatType "x" GHC.Int.Int16
+instance GHC.TypeLits.Printf.Internal.FormatType "x" GHC.Int.Int32
+instance GHC.TypeLits.Printf.Internal.FormatType "x" GHC.Int.Int64
+instance GHC.TypeLits.Printf.Internal.FormatType "x" GHC.Integer.Type.Integer
+instance GHC.TypeLits.Printf.Internal.FormatType "x" GHC.Natural.Natural
+instance GHC.TypeLits.Printf.Internal.FormatType "x" GHC.Types.Word
+instance GHC.TypeLits.Printf.Internal.FormatType "x" GHC.Word.Word8
+instance GHC.TypeLits.Printf.Internal.FormatType "x" GHC.Word.Word16
+instance GHC.TypeLits.Printf.Internal.FormatType "x" GHC.Word.Word32
+instance GHC.TypeLits.Printf.Internal.FormatType "x" GHC.Word.Word64
+instance GHC.TypeLits.Printf.Internal.FormatType "X" GHC.Types.Char
+instance GHC.TypeLits.Printf.Internal.FormatType "X" GHC.Types.Int
+instance GHC.TypeLits.Printf.Internal.FormatType "X" GHC.Int.Int8
+instance GHC.TypeLits.Printf.Internal.FormatType "X" GHC.Int.Int16
+instance GHC.TypeLits.Printf.Internal.FormatType "X" GHC.Int.Int32
+instance GHC.TypeLits.Printf.Internal.FormatType "X" GHC.Int.Int64
+instance GHC.TypeLits.Printf.Internal.FormatType "X" GHC.Integer.Type.Integer
+instance GHC.TypeLits.Printf.Internal.FormatType "X" GHC.Natural.Natural
+instance GHC.TypeLits.Printf.Internal.FormatType "X" GHC.Types.Word
+instance GHC.TypeLits.Printf.Internal.FormatType "X" GHC.Word.Word8
+instance GHC.TypeLits.Printf.Internal.FormatType "X" GHC.Word.Word16
+instance GHC.TypeLits.Printf.Internal.FormatType "X" GHC.Word.Word32
+instance GHC.TypeLits.Printf.Internal.FormatType "X" GHC.Word.Word64
+instance GHC.TypeLits.Printf.Internal.FormatType "b" GHC.Types.Char
+instance GHC.TypeLits.Printf.Internal.FormatType "b" GHC.Types.Int
+instance GHC.TypeLits.Printf.Internal.FormatType "b" GHC.Int.Int8
+instance GHC.TypeLits.Printf.Internal.FormatType "b" GHC.Int.Int16
+instance GHC.TypeLits.Printf.Internal.FormatType "b" GHC.Int.Int32
+instance GHC.TypeLits.Printf.Internal.FormatType "b" GHC.Int.Int64
+instance GHC.TypeLits.Printf.Internal.FormatType "b" GHC.Integer.Type.Integer
+instance GHC.TypeLits.Printf.Internal.FormatType "b" GHC.Natural.Natural
+instance GHC.TypeLits.Printf.Internal.FormatType "b" GHC.Types.Word
+instance GHC.TypeLits.Printf.Internal.FormatType "b" GHC.Word.Word8
+instance GHC.TypeLits.Printf.Internal.FormatType "b" GHC.Word.Word16
+instance GHC.TypeLits.Printf.Internal.FormatType "b" GHC.Word.Word32
+instance GHC.TypeLits.Printf.Internal.FormatType "b" GHC.Word.Word64
+instance GHC.TypeLits.Printf.Internal.FormatType "u" GHC.Types.Char
+instance GHC.TypeLits.Printf.Internal.FormatType "u" GHC.Types.Int
+instance GHC.TypeLits.Printf.Internal.FormatType "u" GHC.Int.Int8
+instance GHC.TypeLits.Printf.Internal.FormatType "u" GHC.Int.Int16
+instance GHC.TypeLits.Printf.Internal.FormatType "u" GHC.Int.Int32
+instance GHC.TypeLits.Printf.Internal.FormatType "u" GHC.Int.Int64
+instance GHC.TypeLits.Printf.Internal.FormatType "u" GHC.Integer.Type.Integer
+instance GHC.TypeLits.Printf.Internal.FormatType "u" GHC.Natural.Natural
+instance GHC.TypeLits.Printf.Internal.FormatType "u" GHC.Types.Word
+instance GHC.TypeLits.Printf.Internal.FormatType "u" GHC.Word.Word8
+instance GHC.TypeLits.Printf.Internal.FormatType "u" GHC.Word.Word16
+instance GHC.TypeLits.Printf.Internal.FormatType "u" GHC.Word.Word32
+instance GHC.TypeLits.Printf.Internal.FormatType "u" GHC.Word.Word64
+instance GHC.TypeLits.Printf.Internal.FormatType "f" GHC.Types.Double
+instance GHC.TypeLits.Printf.Internal.FormatType "f" GHC.Types.Float
+instance GHC.TypeLits.Printf.Internal.FormatType "F" GHC.Types.Double
+instance GHC.TypeLits.Printf.Internal.FormatType "F" GHC.Types.Float
+instance GHC.TypeLits.Printf.Internal.FormatType "g" GHC.Types.Double
+instance GHC.TypeLits.Printf.Internal.FormatType "g" GHC.Types.Float
+instance GHC.TypeLits.Printf.Internal.FormatType "G" GHC.Types.Double
+instance GHC.TypeLits.Printf.Internal.FormatType "G" GHC.Types.Float
+instance GHC.TypeLits.Printf.Internal.FormatType "e" GHC.Types.Double
+instance GHC.TypeLits.Printf.Internal.FormatType "e" GHC.Types.Float
+instance GHC.TypeLits.Printf.Internal.FormatType "E" GHC.Types.Double
+instance GHC.TypeLits.Printf.Internal.FormatType "E" GHC.Types.Float
+instance GHC.TypeLits.Printf.Internal.FormatType "s" GHC.Base.String
+instance GHC.TypeLits.Printf.Internal.FormatType "s" Data.Text.Internal.Text
+instance GHC.TypeLits.Printf.Internal.FormatType "s" Data.Text.Internal.Lazy.Text
+instance GHC.TypeLits.Printf.Internal.FormatType "v" GHC.Types.Char
+instance GHC.TypeLits.Printf.Internal.FormatType "v" GHC.Types.Int
+instance GHC.TypeLits.Printf.Internal.FormatType "v" GHC.Int.Int8
+instance GHC.TypeLits.Printf.Internal.FormatType "v" GHC.Int.Int16
+instance GHC.TypeLits.Printf.Internal.FormatType "v" GHC.Int.Int32
+instance GHC.TypeLits.Printf.Internal.FormatType "v" GHC.Int.Int64
+instance GHC.TypeLits.Printf.Internal.FormatType "v" GHC.Integer.Type.Integer
+instance GHC.TypeLits.Printf.Internal.FormatType "v" GHC.Natural.Natural
+instance GHC.TypeLits.Printf.Internal.FormatType "v" GHC.Types.Word
+instance GHC.TypeLits.Printf.Internal.FormatType "v" GHC.Word.Word8
+instance GHC.TypeLits.Printf.Internal.FormatType "v" GHC.Word.Word16
+instance GHC.TypeLits.Printf.Internal.FormatType "v" GHC.Word.Word32
+instance GHC.TypeLits.Printf.Internal.FormatType "v" GHC.Word.Word64
+instance GHC.TypeLits.Printf.Internal.FormatType "v" GHC.Types.Double
+instance GHC.TypeLits.Printf.Internal.FormatType "v" GHC.Types.Float
+instance GHC.TypeLits.Printf.Internal.FormatType "v" GHC.Base.String
+instance GHC.TypeLits.Printf.Internal.FormatType "v" Data.Text.Internal.Text
+instance GHC.TypeLits.Printf.Internal.FormatType "v" Data.Text.Internal.Lazy.Text
+
+
 -- | An extensible and type-safe printf from parsing GHC TypeLits Symbol
 --   literals, matching the semantics of <a>printf</a> from
 --   <a>Text.Printf</a> in <i>base</i>. The difference is that the variants
@@ -88,7 +452,10 @@
 --   three benefits while still allowing for polymorphism!
 --   
 --   You can extend functionality with formatting for your own types by
---   providing instances of <tt>FormatChar</tt>.
+--   providing instances of <tt>FormatType</tt>.
+--   
+--   Also in this module is <a>pfmt</a>, which allows you to format
+--   individual items according to a single format specifier.
 module GHC.TypeLits.Printf
 
 -- | Typeclass associating format types (<tt>d</tt>, <tt>f</tt>, etc.) with
@@ -96,11 +463,14 @@ module GHC.TypeLits.Printf
 --   
 --   You can extend the printf methods here for your own types by writing
 --   your instances here.
-class FormatChar (t :: SChar) a
-formatArg :: FormatChar t a => p t -> a -> FieldFormat -> ShowS
-formatArg :: (FormatChar t a, PrintfArg a) => p t -> a -> FieldFormat -> ShowS
+class FormatType (t :: SChar) a
+formatArg :: FormatType t a => p t -> a -> FieldFormat -> ShowS
+formatArg :: (FormatType t a, PrintfArg a) => p t -> a -> FieldFormat -> ShowS
 
--- | A type synonym for a single-character symbol
+-- | A type synonym for a single-character symbol. Ideally this would just
+--   be <a>Char</a>, but we don't have chars at the type level. So, if you
+--   see <a>SChar</a> in a type signature, it means that it's expected to
+--   be a symbol/string with only one single character.
 type SChar = Symbol
 
 -- | Type-safe printf with true guarded polyarity. Call it like
@@ -213,7 +583,7 @@ data Rec (a :: u -> Type) (b :: [u])
 --   
 --   (This should evoke the idea of of <tt>3.62 : <a>Luigi</a> : []</tt>,
 --   even though the latter is not possible in Haskell)
-pattern (:%) :: () => FormatChar c a => a -> FormatArgs cs -> FormatArgs (c : cs)
+pattern (:%) :: () => FormatType c a => a -> FormatArgs cs -> FormatArgs (c : cs)
 infixr 7 :%
 
 -- | A heterogeneous list (from <a>Data.Vinyl.Core</a>) used for calling
@@ -349,3 +719,66 @@ printf_ :: Printf str fun => p str -> fun
 --   types, as well.</li>
 --   </ul>
 class FormatFun (ffs :: [Either Symbol FieldFormat]) fun
+
+-- | Parse and run a <i>single</i> format hole on a single vale. Can be
+--   useful for formatting individual items or for testing your own custom
+--   instances of <a>FormatType</a>.
+--   
+--   Usually meant to be used with <i>OverloadedLabels</i>:
+--   
+--   <pre>
+--   &gt;&gt;&gt; pfmt #f 3.62
+--   "3.62"
+--   </pre>
+--   
+--   However, current versions of GHC disallow labels that aren't valid
+--   identifier names, disallowing things like <tt><a>pfmt</a> #.2f
+--   3.62</tt>. While there is an
+--   &lt;<a>https://github.com/ghc-proposals/ghc-proposals/blob/master/proposals/0170-unrestricted-overloadedlabels.rst</a>
+--   approved proposal&gt; that allows this, if you are using an earlier
+--   GHC version, you can get around this using <a>mkPFmt</a>:
+--   
+--   <pre>
+--   &gt;&gt;&gt; pfmt (mkPFmt @".2f") 3.6234124
+--   "3.62"
+--   </pre>
+--   
+--   Ideally we'd want to be able to write
+--   
+--   <pre>
+--   &gt;&gt;&gt; pfmt #.2f 3.6234124
+--   "3.62"
+--   </pre>
+--   
+--   (which should be possible in GHC 8.10+)
+--   
+--   Note that the format string does not include the leading <tt>%</tt>.
+pfmt :: forall c a. FormatType c a => PFmt c -> a -> String
+
+-- | Utility type powering <a>pfmt</a>. See dcumentation for <a>pfmt</a>
+--   for more information on usage.
+--   
+--   Using <i>OverloadedLabels</i>, you never need to construct this
+--   directly can just write <tt>#f</tt> and a <tt><a>PFmt</a> "f"</tt>
+--   will be generated. You can also create this using <a>mkPFmt</a> or
+--   <a>mkPFmt_</a>, in the situations where <i>OverloadedLabels</i>
+--   doesn't work or is not wanted.
+data PFmt c
+
+-- | Useful for using <a>pfmt</a> without <i>OverloadedLabels</i>, or also
+--   when passing format specifiers that aren't currently allowed with
+--   <i>OverloadedLabels</i> until GHC 8.10+ (like <tt>#.2f</tt>).
+--   
+--   <pre>
+--   &gt;&gt;&gt; pfmt (mkPFmt @".2f") 3.6234124
+--   "3.62"
+--   </pre>
+mkPFmt :: forall str lst ff f w q m c. (Listify str lst, 'Just ff ~ ParseFmt lst, Reflect ff, ff ~ 'FF f w q m c) => PFmt c
+
+-- | A version of <a>mkPFmt</a> that takes an explicit proxy input.
+--   
+--   <pre>
+--   &gt;&gt;&gt; pfmt (mkPFmt_ (Proxy :: Proxy ".2f") 3.6234124
+--   "3.62"
+--   </pre>
+mkPFmt_ :: forall str lst ff f w q m c p. (Listify str lst, 'Just ff ~ ParseFmt lst, Reflect ff, ff ~ 'FF f w q m c) => p str -> PFmt c
