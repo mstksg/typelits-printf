@@ -147,8 +147,8 @@ printf_ :: Printf str fun => p str -> fun
 --   
 --   Ideally, you will never have to run into this typeclass or have to
 --   deal with it. It will come up if you ask for the type of
---   <a>printf</a>, or if you give the wrong number or type of arguments to
---   it.
+--   <a>printf</a>, or sometimes if you give the wrong number or type of
+--   arguments to it.
 --   
 --   <pre>
 --   &gt;&gt;&gt; :t printf @"You have %.2f dollars, %s"
@@ -176,25 +176,51 @@ printf_ :: Printf str fun => p str -> fun
 --   ()</tt>, in the same way that <a>Text.Printf</a> works. We also
 --   support using strict <a>Text</a> lazy <a>Text</a> as well.
 --   
---   Note that while it is somewhat possible to "reason with" or get type
---   feedback from this (as shown above), it is nowhere near the level of
---   clarity as <a>pprintf</a> or <a>rprintf</a>. And, if things go wrong
---   (like passing too many or too little arguments, or arguments of the
---   wrong type), the error messages are not going to be as useful.
---   However, there are some measures put into place to make type errors
---   more feasible for debugging, and I'm open for suggestions for
---   improvement methods, as well!
+--   So, while it's possible to reason with this using the types, it's
+--   usually more difficult than with <tt>pprintf</tt> and
+--   <tt>rprintf</tt>.
 --   
---   Some guidelines for making sure the type-checking and debugging story
---   goes as nicely as possible:
+--   This is why, instead of reasoning with this using its types, it's
+--   easier to reason with it using the errors instead:
 --   
---   <ul>
---   <li>Make sure the result type is always known monomorphically.
---   Sometimes this means requiring an explicit annotation, like <tt>printf
---   ... :: String</tt>.</li>
---   <li>Make sure all the values you give to this have known monomorphic
---   types, as well.</li>
---   </ul>
+--   <pre>
+--   &gt;&gt;&gt; printf @"You have %.2f dollars, %s"
+--   -- ERROR: Call to printf missing argument fulfilling "%.2f"
+--   -- Either provide an argument or rewrite the format string to not expect
+--   -- one.
+--   </pre>
+--   
+--   <pre>
+--   &gt;&gt;&gt; printf @"You have %.2f dollars, %s" 3.62
+--   -- ERROR: Call to printf missing argument fulfilling "%s"
+--   -- Either provide an argument or rewrite the format string to not expect
+--   -- one.
+--   </pre>
+--   
+--   <pre>
+--   &gt;&gt;&gt; printf @"You have %.2f dollars, %s" 3.62 "Luigi"
+--   You have 3.62 dollars, Luigi
+--   </pre>
+--   
+--   <pre>
+--   &gt;&gt;&gt; printf @"You have %.2f dollars, %s" 3.62 "Luigi" 72
+--   -- ERROR: An extra argument of type Integer was given to a call to printf
+--   -- Either remove the argument, or rewrite the format string to include the
+--   -- appropriate hole.
+--   </pre>
+--   
+--   If you're having problems getting the error messages to give helpful
+--   feedback, try using <a>pHelp</a>:
+--   
+--   <pre>
+--   &gt;&gt;&gt; pHelp $ printf @"You have %.2f dollars, %s" 3.62
+--   -- ERROR: Call to printf missing argument fulfilling "%s"
+--   -- Either provide an argument or rewrite the format string to not expect
+--   -- one.
+--   </pre>
+--   
+--   <a>pHelp</a> can give the type system the nudge it needs to provide
+--   good errors.
 class FormatFun (ffs :: [Either Symbol FieldFormat]) fun
 formatFun :: FormatFun ffs fun => p ffs -> String -> fun
 
@@ -252,7 +278,7 @@ pfmt :: forall c a. FormatType c a => PFmt c -> a -> String
 --   &gt;&gt;&gt; pfmt (mkPFmt @".2f") 3.6234124
 --   "3.62"
 --   </pre>
-mkPFmt :: forall str lst ff f w q m c. (Listify str lst, 'Just ff ~ ParseFmt lst, Reflect ff, ff ~ 'FF f w q m c) => PFmt c
+mkPFmt :: forall str lst ff f w q m c. (Listify str lst, ff ~ ParseFmt_ lst, Reflect ff, ff ~ 'FF f w q m c) => PFmt c
 
 -- | A version of <a>mkPFmt</a> that takes an explicit proxy input.
 --   
@@ -260,12 +286,40 @@ mkPFmt :: forall str lst ff f w q m c. (Listify str lst, 'Just ff ~ ParseFmt lst
 --   &gt;&gt;&gt; pfmt (mkPFmt_ (Proxy :: Proxy ".2f") 3.6234124
 --   "3.62"
 --   </pre>
-mkPFmt_ :: forall str lst ff f w q m c p. (Listify str lst, 'Just ff ~ ParseFmt lst, Reflect ff, ff ~ 'FF f w q m c) => p str -> PFmt c
+mkPFmt_ :: forall str lst ff f w q m c p. (Listify str lst, ff ~ ParseFmt_ lst, Reflect ff, ff ~ 'FF f w q m c) => p str -> PFmt c
+
+-- | A useful token for helping the type system give useful errors for
+--   <tt>printf</tt>:
+--   
+--   <pre>
+--   &gt;&gt;&gt; printf @"You have ".2f" dollars, %s" 3.26 :: PHelp
+--   -- ERROR: Call to printf missing argument fulfilling "%s"
+--   -- Either provide an argument or rewrite the format string to not expect
+--   -- one.
+--   </pre>
+--   
+--   Usually things should work out on their own without needing this ...
+--   but sometimes the type system could need a nudge.
+--   
+--   See also <a>pHelp</a>
 newtype PHelp
 PHelp :: String -> PHelp
+
+-- | A useful helper function for helping the type system give useful
+--   errors for <tt>printf</tt>:
+--   
+--   <pre>
+--   &gt;&gt;&gt; pHelp $ printf @"You have %.2f dollars, %s" 3.62
+--   -- ERROR: Call to printf missing argument fulfilling "%s"
+--   -- Either provide an argument or rewrite the format string to not expect
+--   -- one.
+--   </pre>
+--   
+--   Usually things would work out on their own without needing this ...
+--   but sometimes the type system could need a nudge.
 [pHelp] :: PHelp -> String
-instance (Data.Symbol.Utils.Listify str lst, 'GHC.Maybe.Just ff GHC.Types.~ GHC.TypeLits.Printf.Parse.ParseFmt lst, GHC.TypeLits.Printf.Parse.Reflect ff, ff GHC.Types.~ 'GHC.TypeLits.Printf.Parse.FF f w p m c) => GHC.OverloadedLabels.IsLabel str (GHC.TypeLits.Printf.Internal.PFmt c)
-instance (Data.Symbol.Utils.Listify str lst, 'GHC.Maybe.Just ffs GHC.Types.~ GHC.TypeLits.Printf.Parse.ParseFmtStr lst, GHC.TypeLits.Printf.Internal.FormatFun ffs fun) => GHC.TypeLits.Printf.Internal.Printf str fun
+instance (Data.Symbol.Utils.Listify str lst, ff GHC.Types.~ GHC.TypeLits.Printf.Parse.ParseFmt_ lst, GHC.TypeLits.Printf.Parse.Reflect ff, ff GHC.Types.~ 'GHC.TypeLits.Printf.Parse.FF f w p m c) => GHC.OverloadedLabels.IsLabel str (GHC.TypeLits.Printf.Internal.PFmt c)
+instance (Data.Symbol.Utils.Listify str lst, ffs GHC.Types.~ GHC.TypeLits.Printf.Parse.ParseFmtStr_ lst, GHC.TypeLits.Printf.Internal.FormatFun ffs fun) => GHC.TypeLits.Printf.Internal.Printf str fun
 instance (TypeError ...) => GHC.TypeLits.Printf.Internal.FormatFun ('Data.Either.Right ff : ffs) GHC.Base.String
 instance (TypeError ...) => GHC.TypeLits.Printf.Internal.FormatFun ('Data.Either.Right ff : ffs) ()
 instance (TypeError ...) => GHC.TypeLits.Printf.Internal.FormatFun ('Data.Either.Right ff : ffs) Data.Text.Internal.Text
@@ -281,7 +335,7 @@ instance (TypeError ...) => GHC.TypeLits.Printf.Internal.FormatFun '[] ()
 instance (TypeError ...) => GHC.TypeLits.Printf.Internal.FormatFun '[] (a -> b)
 instance (GHC.TypeLits.KnownSymbol str, GHC.TypeLits.Printf.Internal.FormatFun ffs fun) => GHC.TypeLits.Printf.Internal.FormatFun ('Data.Either.Left str : ffs) fun
 instance (GHC.TypeLits.Printf.Parse.Reflect ff, ff GHC.Types.~ 'GHC.TypeLits.Printf.Parse.FF f w p m c, GHC.TypeLits.Printf.Internal.FormatType c a, GHC.TypeLits.Printf.Internal.FormatFun ffs fun) => GHC.TypeLits.Printf.Internal.FormatFun ('Data.Either.Right ff : ffs) (a -> fun)
-instance (Data.Symbol.Utils.Listify str lst, 'GHC.Maybe.Just ffs GHC.Types.~ GHC.TypeLits.Printf.Parse.ParseFmtStr lst, GHC.TypeLits.Printf.Internal.RFormat ffs ps) => GHC.TypeLits.Printf.Internal.RPrintf str ps
+instance (Data.Symbol.Utils.Listify str lst, ffs GHC.Types.~ GHC.TypeLits.Printf.Parse.ParseFmtStr_ lst, GHC.TypeLits.Printf.Internal.RFormat ffs ps) => GHC.TypeLits.Printf.Internal.RPrintf str ps
 instance GHC.TypeLits.Printf.Internal.RFormat '[] '[]
 instance (GHC.TypeLits.KnownSymbol str, GHC.TypeLits.Printf.Internal.RFormat ffs ps) => GHC.TypeLits.Printf.Internal.RFormat ('Data.Either.Left str : ffs) ps
 instance (GHC.TypeLits.Printf.Parse.Reflect ff, ff GHC.Types.~ 'GHC.TypeLits.Printf.Parse.FF f w p m c, GHC.TypeLits.Printf.Internal.RFormat ffs ps) => GHC.TypeLits.Printf.Internal.RFormat ('Data.Either.Right ff : ffs) (c : ps)
@@ -539,12 +593,11 @@ type SChar = Symbol
 --   </pre>
 --   
 --   See <a>printf</a> for a polyariadic method that doesn't require
---   <a>PP</a> on its inputs, but doesn't have as usable a type when
---   queried before supplying its arguments, and <a>rprintf</a> for a
---   fake-polyariadic method that doesn't require <a>PP</a>, but requires
---   arguments in a single list instead. Also see top-level module
---   documentation <a>GHC.TypeLits.Printf</a> for a more comprehensive
---   summary.
+--   <a>PP</a> on its inputs, but with a less helpful type signature, and
+--   <a>rprintf</a> for a fake-polyariadic method that doesn't require
+--   <a>PP</a>, but requires arguments in a single list instead. Also see
+--   top-level module documentation <a>GHC.TypeLits.Printf</a> for a more
+--   comprehensive summary.
 pprintf :: forall str ps. (RPrintf str ps, RecordCurry ps) => CurriedF PP ps String
 
 -- | A version of <a>pprintf</a> taking an explicit proxy, which allows
@@ -660,39 +713,51 @@ type FormatArgs = Rec PP
 --   You have 3.62 dollars, Luigi
 --   </pre>
 --   
---   If you what the type of this function unapplied (or with not enough
---   arguments), or try to use it with typed holes or type-guided
---   development, the type errors aren't going to be pretty in most
---   situations. In addition, you always have to make sure the result type
---   can be inferred as <a>String</a>, which may require a type annotation
---   in some situations.
+--   While the type of <tt><a>printf</a> @"my fmt string"</tt> isn't going
+--   to be very helpful, the error messages should help guide you along the
+--   way:
 --   
---   (Measures have been taken to make the error messages as helpful as
---   possible, but they're not going to be as pretty as for <a>pprintf</a>
---   or <a>rprintf</a>. See <a>FormatFun</a> documentation for ways to get
---   some limited type feedback from this function.)
+--   <pre>
+--   &gt;&gt;&gt; printf @"You have %.2f dollars, %s"
+--   -- ERROR: Call to printf missing argument fulfilling "%.2f"
+--   -- Either provide an argument or rewrite the format string to not expect
+--   -- one.
+--   </pre>
 --   
---   Essentially, this is easier to use if you have all the right arguments
---   in place...but more difficult to debug (at compiletime) if you mess
---   up.
+--   <pre>
+--   &gt;&gt;&gt; printf @"You have %.2f dollars, %s" 3.62
+--   -- ERROR: Call to printf missing argument fulfilling "%s"
+--   -- Either provide an argument or rewrite the format string to not expect
+--   -- one.
+--   </pre>
 --   
---   Some guidelines for making sure the type-checking and debugging story
---   goes as nicely as possible:
+--   <pre>
+--   &gt;&gt;&gt; printf @"You have %.2f dollars, %s" 3.62 "Luigi"
+--   You have 3.62 dollars, Luigi
+--   </pre>
 --   
---   <ul>
---   <li>Make sure the result type is always known monomorphically.
---   Sometimes this means requiring an explicit annotation, like <tt>printf
---   ... :: String</tt>.</li>
---   <li>Make sure all the values you give to this have known monomorphic
---   types, as well.</li>
---   </ul>
+--   <pre>
+--   &gt;&gt;&gt; printf @"You have %.2f dollars, %s" 3.62 "Luigi" 72
+--   -- ERROR: An extra argument of type Integer was given to a call to printf
+--   -- Either remove the argument, or rewrite the format string to include the
+--   -- appropriate hole.
+--   </pre>
 --   
---   <i>However</i>, all debugging should still be only at compile-time.
---   Once it compiles, it's safe --- code with missing or badly typed
---   arguments will not compile, and so won't give you any runtime errors.
+--   If you're having problems getting the error messages to give helpful
+--   feedback, try using <a>pHelp</a>:
 --   
---   See <a>pprintf</a> for a version of this with much nicer types and
---   type errors, but requires wrapping arguments, and <a>rprintf</a> for a
+--   <pre>
+--   &gt;&gt;&gt; pHelp $ printf @"You have %.2f dollars, %s" 3.62
+--   -- ERROR: Call to printf missing argument fulfilling "%s"
+--   -- Either provide an argument or rewrite the format string to not expect
+--   -- one.
+--   </pre>
+--   
+--   <a>pHelp</a> can give the type system the nudge it needs to provide
+--   good errors.
+--   
+--   See <a>pprintf</a> for a version of this with nicer types and type
+--   errors, but requires wrapping arguments, and <a>rprintf</a> for a
 --   version of this with "fake" polyarity, taking a list as input instead.
 --   Also see top-level module documentation <a>GHC.TypeLits.Printf</a> for
 --   a more comprehensive summary.
@@ -710,7 +775,35 @@ printf :: forall str fun. Printf str fun => fun
 --   You have 3.62 dollars, Luigi
 --   </pre>
 printf_ :: Printf str fun => p str -> fun
+
+-- | A useful token for helping the type system give useful errors for
+--   <tt>printf</tt>:
+--   
+--   <pre>
+--   &gt;&gt;&gt; printf @"You have ".2f" dollars, %s" 3.26 :: PHelp
+--   -- ERROR: Call to printf missing argument fulfilling "%s"
+--   -- Either provide an argument or rewrite the format string to not expect
+--   -- one.
+--   </pre>
+--   
+--   Usually things should work out on their own without needing this ...
+--   but sometimes the type system could need a nudge.
+--   
+--   See also <a>pHelp</a>
 data PHelp
+
+-- | A useful helper function for helping the type system give useful
+--   errors for <tt>printf</tt>:
+--   
+--   <pre>
+--   &gt;&gt;&gt; pHelp $ printf @"You have %.2f dollars, %s" 3.62
+--   -- ERROR: Call to printf missing argument fulfilling "%s"
+--   -- Either provide an argument or rewrite the format string to not expect
+--   -- one.
+--   </pre>
+--   
+--   Usually things would work out on their own without needing this ...
+--   but sometimes the type system could need a nudge.
 pHelp :: PHelp -> String
 
 -- | The typeclass supporting polyarity used by <a>printf</a>. It works in
@@ -719,8 +812,8 @@ pHelp :: PHelp -> String
 --   
 --   Ideally, you will never have to run into this typeclass or have to
 --   deal with it. It will come up if you ask for the type of
---   <a>printf</a>, or if you give the wrong number or type of arguments to
---   it.
+--   <a>printf</a>, or sometimes if you give the wrong number or type of
+--   arguments to it.
 --   
 --   <pre>
 --   &gt;&gt;&gt; :t printf @"You have %.2f dollars, %s"
@@ -748,25 +841,51 @@ pHelp :: PHelp -> String
 --   ()</tt>, in the same way that <a>Text.Printf</a> works. We also
 --   support using strict <a>Text</a> lazy <a>Text</a> as well.
 --   
---   Note that while it is somewhat possible to "reason with" or get type
---   feedback from this (as shown above), it is nowhere near the level of
---   clarity as <a>pprintf</a> or <a>rprintf</a>. And, if things go wrong
---   (like passing too many or too little arguments, or arguments of the
---   wrong type), the error messages are not going to be as useful.
---   However, there are some measures put into place to make type errors
---   more feasible for debugging, and I'm open for suggestions for
---   improvement methods, as well!
+--   So, while it's possible to reason with this using the types, it's
+--   usually more difficult than with <tt>pprintf</tt> and
+--   <tt>rprintf</tt>.
 --   
---   Some guidelines for making sure the type-checking and debugging story
---   goes as nicely as possible:
+--   This is why, instead of reasoning with this using its types, it's
+--   easier to reason with it using the errors instead:
 --   
---   <ul>
---   <li>Make sure the result type is always known monomorphically.
---   Sometimes this means requiring an explicit annotation, like <tt>printf
---   ... :: String</tt>.</li>
---   <li>Make sure all the values you give to this have known monomorphic
---   types, as well.</li>
---   </ul>
+--   <pre>
+--   &gt;&gt;&gt; printf @"You have %.2f dollars, %s"
+--   -- ERROR: Call to printf missing argument fulfilling "%.2f"
+--   -- Either provide an argument or rewrite the format string to not expect
+--   -- one.
+--   </pre>
+--   
+--   <pre>
+--   &gt;&gt;&gt; printf @"You have %.2f dollars, %s" 3.62
+--   -- ERROR: Call to printf missing argument fulfilling "%s"
+--   -- Either provide an argument or rewrite the format string to not expect
+--   -- one.
+--   </pre>
+--   
+--   <pre>
+--   &gt;&gt;&gt; printf @"You have %.2f dollars, %s" 3.62 "Luigi"
+--   You have 3.62 dollars, Luigi
+--   </pre>
+--   
+--   <pre>
+--   &gt;&gt;&gt; printf @"You have %.2f dollars, %s" 3.62 "Luigi" 72
+--   -- ERROR: An extra argument of type Integer was given to a call to printf
+--   -- Either remove the argument, or rewrite the format string to include the
+--   -- appropriate hole.
+--   </pre>
+--   
+--   If you're having problems getting the error messages to give helpful
+--   feedback, try using <a>pHelp</a>:
+--   
+--   <pre>
+--   &gt;&gt;&gt; pHelp $ printf @"You have %.2f dollars, %s" 3.62
+--   -- ERROR: Call to printf missing argument fulfilling "%s"
+--   -- Either provide an argument or rewrite the format string to not expect
+--   -- one.
+--   </pre>
+--   
+--   <a>pHelp</a> can give the type system the nudge it needs to provide
+--   good errors.
 class FormatFun (ffs :: [Either Symbol FieldFormat]) fun
 
 -- | Parse and run a <i>single</i> format hole on a single vale. Can be
@@ -822,7 +941,7 @@ data PFmt c
 --   &gt;&gt;&gt; pfmt (mkPFmt @".2f") 3.6234124
 --   "3.62"
 --   </pre>
-mkPFmt :: forall str lst ff f w q m c. (Listify str lst, 'Just ff ~ ParseFmt lst, Reflect ff, ff ~ 'FF f w q m c) => PFmt c
+mkPFmt :: forall str lst ff f w q m c. (Listify str lst, ff ~ ParseFmt_ lst, Reflect ff, ff ~ 'FF f w q m c) => PFmt c
 
 -- | A version of <a>mkPFmt</a> that takes an explicit proxy input.
 --   
@@ -830,4 +949,4 @@ mkPFmt :: forall str lst ff f w q m c. (Listify str lst, 'Just ff ~ ParseFmt lst
 --   &gt;&gt;&gt; pfmt (mkPFmt_ (Proxy :: Proxy ".2f") 3.6234124
 --   "3.62"
 --   </pre>
-mkPFmt_ :: forall str lst ff f w q m c p. (Listify str lst, 'Just ff ~ ParseFmt lst, Reflect ff, ff ~ 'FF f w q m c) => p str -> PFmt c
+mkPFmt_ :: forall str lst ff f w q m c p. (Listify str lst, ff ~ ParseFmt_ lst, Reflect ff, ff ~ 'FF f w q m c) => p str -> PFmt c
