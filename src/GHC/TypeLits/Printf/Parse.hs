@@ -16,6 +16,7 @@ module GHC.TypeLits.Printf.Parse (
   , ParseFmtStr_
   , ParseFmt
   , ParseFmt_
+  , ShowFormat
   , FormatAdjustment(..)
   , FormatSign(..)
   , WidthMod(..)
@@ -118,6 +119,52 @@ instance (Reflect flags, Reflect width, Reflect prec, Reflect mods, Reflect chr)
         fmtModifiers = foldMap modString (reflect (Proxy @mods))
         fmtChar      = T.head (reflect (Proxy @chr))
 
+type family ShowFormat (x :: k) :: Symbol
+
+type instance ShowFormat 'LeftAdjust = "-"
+type instance ShowFormat 'ZeroPad    = "0"
+type instance ShowFormat 'SignPlus   = "+"
+type instance ShowFormat 'SignSpace  = " "
+type instance ShowFormat 'Nothing    = ""
+type instance ShowFormat ('Just x)   = ShowFormat x
+type instance ShowFormat ('Flags a s 'False) = ShowFormat a `AppendSymbol` ShowFormat s
+type instance ShowFormat ('Flags a s 'True ) = ShowFormat a `AppendSymbol` ShowFormat s `AppendSymbol` "#"
+type instance ShowFormat 'WMhh = "hh"
+type instance ShowFormat 'WMh  = "h"
+type instance ShowFormat 'WMl  = "l"
+type instance ShowFormat 'WMll = "ll"
+type instance ShowFormat 'WML  = "L"
+type instance ShowFormat (n :: Nat) = ShowNat n
+type instance ShowFormat ('FF f w 'Nothing m c) = ShowFormat f
+                                   `AppendSymbol` ShowFormat w
+                                   `AppendSymbol` ShowFormat m
+                                   `AppendSymbol` c
+type instance ShowFormat ('FF f w ('Just p) m c) = ShowFormat f
+                                   `AppendSymbol` ShowFormat w
+                                   `AppendSymbol` "."
+                                   `AppendSymbol` ShowFormat p
+                                   `AppendSymbol` ShowFormat m
+                                   `AppendSymbol` c
+
+type family ShowNat (n :: Nat) :: Symbol where
+    ShowNat 0 = "0"
+    ShowNat n = ShowNatHelp n
+
+type family ShowNatHelp (n :: Nat) :: Symbol where
+    ShowNatHelp 0 = ""
+    ShowNatHelp n = AppendSymbol (ShowNatHelp (Div n 10)) (ShowDigit (Mod n 10))
+
+type family ShowDigit (n :: Nat) :: SChar where
+    ShowDigit 0 = "0"
+    ShowDigit 1 = "1"
+    ShowDigit 2 = "2"
+    ShowDigit 3 = "3"
+    ShowDigit 4 = "4"
+    ShowDigit 5 = "5"
+    ShowDigit 6 = "6"
+    ShowDigit 7 = "7"
+    ShowDigit 8 = "8"
+    ShowDigit 9 = "9"
 
 modString :: WidthMod -> String
 modString = \case

@@ -108,6 +108,7 @@ module GHC.TypeLits.Printf (
   , Rec((:%), RNil), FormatArgs
   -- ** Unguarded polyarity
   , printf, printf_
+  , PHelp, pHelp
   , FormatFun
   -- * Single item
   , pfmt
@@ -232,6 +233,11 @@ pprintf = pprintf_ @str @ps (Proxy @str)
 -- this with "fake" polyarity, taking a list as input instead. Also see
 -- top-level module documentation  "GHC.TypeLits.Printf" for a more
 -- comprehensive summary.
+--
+-- Note that this also supports the "interpret as an IO action to print out
+-- results" functionality that "Text.Printf" supports.  This also supports
+-- returning strict 'Data.Text.Text' and lazy 'Data.Text.Lazy.Text' as
+-- well.
 printf :: forall str fun. Printf str fun => fun
 printf = printf_ (Proxy @str)
 

@@ -95,7 +95,7 @@ data Number :: Parser Nat
 type family NumberHelp (xs :: Maybe ([Nat], [SChar])) :: Maybe (Nat, [SChar]) where
     NumberHelp 'Nothing           = 'Nothing
     NumberHelp ('Just '(ns, str)) = 'Just '(FromDigits ns 0, str)
-type instance RunParser Number str = NumberHelp (RunParser (Many Digit) str)
+type instance RunParser Number str = NumberHelp (RunParser (Some Digit) str)
 
 data Cat :: Parser [SChar] -> Parser Symbol
 type family CatHelp (xs :: Maybe ([SChar], [SChar])) :: Maybe (Symbol, [SChar]) where

@@ -39,6 +39,7 @@ module GHC.TypeLits.Printf.Internal (
   , ParseFmt
   , ParseFmt_
   , FormatAdjustment(..)
+  , ShowFormat
   , FormatSign(..)
   , WidthMod(..)
   , Flags(..)
@@ -57,6 +58,7 @@ module GHC.TypeLits.Printf.Internal (
   , PFmt(..)
   , pfmt
   , mkPFmt, mkPFmt_
+  , PHelp(..)
   ) where
 
 import           Data.Int
@@ -317,8 +319,9 @@ instance (Listify str lst, 'Just ffs ~ ParseFmtStr lst, RFormat ffs ps) => RPrin
 -- >>> :t printf @"You have %.2f dollars, %s" 3.62 "Luigi"
 -- FormatFun '[] t => t
 --
--- at which point you may use it as a 'String' or @'IO' 'String'@, in the
--- same way that "Text.Printf" works.
+-- at which point you may use it as a 'String' or @'IO' ()@, in the same
+-- way that "Text.Printf" works.  We also support using strict 'T.Text'
+-- lazy 'TL.Text' as well.
 --
 -- Note that while it is somewhat possible to "reason with" or get type
 -- feedback from this (as shown above), it is nowhere near the level of
@@ -340,8 +343,32 @@ instance (Listify str lst, 'Just ffs ~ ParseFmtStr lst, RFormat ffs ps) => RPrin
 class FormatFun (ffs :: [Either Symbol FieldFormat]) fun where
     formatFun :: p ffs -> String -> fun
 
-instance FormatFun '[] String where
+newtype PHelp = PHelp { pHelp :: String }
+
+instance (a ~ Char) => FormatFun '[] [a] where
     formatFun _ = id
+instance (a ~ Char) => FormatFun '[] PHelp where
+    formatFun _ = PHelp
+instance (a ~ Char) => FormatFun '[] T.Text where
+    formatFun _ = T.pack
+instance (a ~ Char) => FormatFun '[] TL.Text where
+    formatFun _ = TL.pack
+instance (a ~ ()) => FormatFun '[] (IO a) where
+    formatFun _ = putStr
+
+instance TypeError ( 'Text "Result type of a call to printf not sufficiently inferred."
+               ':$$: 'Text "Please provide an explicit type annotation or other way to help inference."
+                   )
+      => FormatFun '[] () where
+    formatFun _ = error
+
+instance TypeError ( 'Text "An extra argument of type "
+               ':<>: 'ShowType a
+               ':<>: 'Text " was given to a call to printf."
+               ':$$: 'Text "Either remove the argument, or rewrite the format string to include the appropriate hole"
+                   )
+      => FormatFun '[] (a -> b) where
+    formatFun _ = error
 
 instance (KnownSymbol str, FormatFun ffs fun) => FormatFun ('Left str ': ffs) fun where
     formatFun _ str = formatFun (Proxy @ffs) (str ++ symbolVal (Proxy @str))
@@ -350,6 +377,25 @@ instance (Reflect ff, ff ~ 'FF f w p m c, FormatType c a, FormatFun ffs fun) => 
     formatFun _ str x = formatFun (Proxy @ffs) (str ++ formatArg (Proxy @c) x ff "")
       where
         ff = reflect (Proxy @ff)
+
+type family MissingError ff where
+    MissingError ff = 'Text "Call to printf missing an argument fulfilling \"%"
+                ':<>: 'Text (ShowFormat ff)
+                ':<>: 'Text "\""
+                ':$$: 'Text "Either provide the argument or rewrite the format string to not expect one."
+
+instance TypeError (MissingError ff) => FormatFun ('Right ff ': ffs) String where
+    formatFun _ = error
+instance TypeError (MissingError ff) => FormatFun ('Right ff ': ffs) () where
+    formatFun _ = error
+instance TypeError (MissingError ff) => FormatFun ('Right ff ': ffs) T.Text where
+    formatFun _ = error
+instance TypeError (MissingError ff) => FormatFun ('Right ff ': ffs) TL.Text where
+    formatFun _ = error
+instance TypeError (MissingError ff) => FormatFun ('Right ff ': ffs) PHelp where
+    formatFun _ = error
+instance TypeError (MissingError ff) => FormatFun ('Right ff ': ffs) (IO a) where
+    formatFun _ = error
 
 class Printf (str :: Symbol) fun where
     -- | A version of 'GHC.TypeLits.Printf.printf' taking an explicit
