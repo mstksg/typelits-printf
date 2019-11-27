@@ -16,6 +16,29 @@
 {-# LANGUAGE TypeOperators          #-}
 {-# LANGUAGE UndecidableInstances   #-}
 
+-- |
+-- Module      : GHC.TypeLits.Printf
+-- Copyright   : (c) Justin Le 2019
+-- License     : BSD3
+--
+-- Maintainer  : justin@jle.im
+-- Stability   : experimental
+-- Portability : non-portable
+--
+-- 
+-- Master table comparing the different methods:
+--
+-- +-----------+------------------+--------------------+--------------------------+
+-- | Method    | True Polyarity   | Naked Arguments    | Type feedback            |
+-- +===========+==================+====================+==========================+
+-- | 'pprintf' | Yes              | No (requires 'PP') | Yes                      |
+-- +-----------+------------------+--------------------+--------------------------+
+-- | 'rprintf' | No (HList-based) | Yes                | Yes                      |
+-- +-----------+------------------+--------------------+--------------------------+
+-- | 'printf'  | Yes              | Yes                | No (Bad errors/guidance) |
+-- +-----------+------------------+--------------------+--------------------------+
+--
+
 module GHC.TypeLits.Printf (
   -- * Formattable things
     FormatChar(..)
@@ -203,16 +226,16 @@ instance (Listify str lst, 'Just ffs ~ ParseFmtStr lst, RFormat ffs ps) => RPrin
 
 -- | Type-safe printf with faked polyarity.  Pass in a "list" of arguments
 -- (using ':%' and 'RNil'), instead of as multiple arguments.  Call it like
--- @'rprintf' @"you have %.02f dollars, %s"@.
+-- @'rprintf' \@"you have %.02f dollars, %s"@.
 --
 -- >>> :t rprintf @"You have %.2f dollars, %s"
--- FormatArgs '["f", "s"] -> 'String'
+-- FormatArgs '["f", "s"] -> String
 --
 -- This means that it is expecting something that can be printed with @f@
 -- and something that can be printed with @s@.  We can provide a 'Double'
 -- and a 'String':
 --
--- >>> putStrLn $ 'rprintf' @"You have %.2f dollars, %s" (3.62 ':%' "Luigi" :% 'RNil')
+-- >>> putStrLn $ rprintf @"You have %.2f dollars, %s" (3.62 ':%' "Luigi" :% 'RNil')
 -- You have 3.62 dollars, Luigi
 --
 -- See 'pprintf' for a version with true polyarity and good clear types,
@@ -229,14 +252,14 @@ infixr 7 :%
 pprintf_ :: forall str ps p. (RPrintf str ps, RecordCurry ps) => p str -> CurriedF PP ps String
 pprintf_ p = rcurry @ps (rprintf_ p)
 
--- | Type-safe printf with true guarded polyarity.  Call it like @'printf'
--- @"you have %.02f dollars, %s"@.
+-- | Type-safe printf with true guarded polyarity.  Call it like @'pprintf'
+-- \@"you have %.02f dollars, %s"@.
 --
 -- A call to printf on a valid string will /always/ give a well-defined
 -- type for a function in return:
 --
 -- >>> :t pprintf @"You have %.2f dollars, %s"
--- 'PP' "f" -> 'PP' "s" -> 'String'
+-- PP "f" -> PP "s" -> String
 --
 -- You can always query the type, and get a well-defined type back, which
 -- you can utilize using typed holes or other type-guided development
@@ -275,7 +298,7 @@ instance (Listify str lst, 'Just ffs ~ ParseFmtStr lst, FormatFun ffs fun) => Pr
     printf_ _ = formatFun (Proxy @ffs) ""
 
 -- | Type-safe printf with true naked polyarity.  Call it like @'printf'
--- @"you have %.02f dollars, %s"@.
+-- \@"you have %.02f dollars, %s"@.
 --
 -- >>> putStrLn $ printf @"You have %.2f dollars, %s" 3.62 "Luigi"
 -- You have 3.62 dollars, Luigi
