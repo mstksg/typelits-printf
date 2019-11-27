@@ -67,7 +67,7 @@
 --   <a>Luigi</a> :% <a>RNil</a></tt> will do.</li>
 --   <li>The type of <a>printf</a> is much less informative. It's possible
 --   to see what you need from the <tt>...</tt> in <a>FormatFun</a>...but
---   it's basically a situation that works fine when it doesn't, but can be
+--   it's basically a situation that works fine when it does, but can be
 --   tricky if you mess up.</li>
 --   </ul>
 --   
