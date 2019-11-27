@@ -10,14 +10,18 @@ extra-source-files:
 - README.md
 - CHANGELOG.md
 
-# Metadata used when publishing your package
-# synopsis:            Short description of your package
-# category:            Web
+synopsis:            Type-safe printf from parsing GHC Typelits
+category:            Text
 
-# To avoid duplicated efforts in documentation and dealing with the
-# complications of embedding Haddock markup inside cabal files, it is
-# common to point users to the README.md file.
-description:         Please see the README on GitHub at <https://github.com/mstksg/typelits-printf#readme>
+description: |
+  An extensible and type-safe printf, matching the semantics of 'P.printf'
+  from "Text.Printf" in /base/.  The difference is that the variants here will
+  always fail to compile if given arguments of the wrong type (or too many or
+  too little arguments).  Most of the variants also provide useful type
+  feedback, telling you the type of arguments it expects and how many when
+  queried with @:t@ or with typed holes.
+
+  See README and documentation of "GHC.TypeLits.Printf" for more information
 
 ghc-options:
 - -Wall
@@ -38,26 +42,3 @@ library:
   - symbols
   - text
   - vinyl
-  # - sop-core
-
-# executables:
-#   symbols-printf-exe:
-#     main:                Main.hs
-#     source-dirs:         app
-#     ghc-options:
-#     - -threaded
-#     - -rtsopts
-#     - -with-rtsopts=-N
-#     dependencies:
-#     - symbols-printf
-
-# tests:
-#   symbols-printf-test:
-#     main:                Spec.hs
-#     source-dirs:         test
-#     ghc-options:
-#     - -threaded
-#     - -rtsopts
-#     - -with-rtsopts=-N
-#     dependencies:
-#     - symbols-printf

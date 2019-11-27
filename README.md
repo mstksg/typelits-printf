@@ -65,3 +65,39 @@ allowing for polymorphism!
 
 You can extend functionality with formatting for your own types by providing
 instances of `FormatChar`.
+
+### Comparisons
+
+There are a few other options for type-safe printfs out on hackage, and they
+all differ in a few key ways.  Some, like *[th-printf][]* and
+*[safe-printf][]*, offer Template Haskell-based ways to generate your printf
+functions.  This package is intended as a "template-haskell free" alternative.
+However, it is notable that with a Template-Haskell based approach, we can
+solve the "pick two" situation above: *[th-printf][]*'s printf fulfills all
+three requirements in the table above, with the only potential drawback being
+Template Haskell usage.
+
+Some others, like *[safe-printf][]*, *[formatting][]*, *[printf-safe][]*,
+*[xformat][]*, and *[category-printf][]*, require manually constructing your
+fomatters, and so you always need to duplicate double-quotes for string
+literals.  This detracts from one of the main convenience aspects of *printf*,
+in my opinion.
+
+```haskell
+"You have " % f' 2 % " dollars, " % s
+-- vs
+"You have %.2f dollars, %s"
+```
+
+However, calling these libraries "safe printf libraries" does not do them
+justice.  A library like *[formatting][]* is a feature-rich formatting library,
+handling things like dates and other useful formatting features in a
+first-class way that embraces Haskell idioms.  This library here is merely a
+type-safe printf, emulating the features of *base*'s printf and C `printf(3)`.
+
+[th-printf]: https://hackage.haskell.org/package/th-printf
+[safe-printf]: https://hackage.haskell.org/package/safe-printf
+[formatting]: https://hackage.haskell.org/package/formatting
+[printf-safe]: https://hackage.haskell.org/package/printf-safe
+[xformat]: https://hackage.haskell.org/package/xformat
+[category-printf]: https://hackage.haskell.org/package/category-printf
