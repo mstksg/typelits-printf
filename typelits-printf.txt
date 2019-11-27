@@ -2,8 +2,18 @@
 -- See Hoogle, http://www.haskell.org/hoogle/
 
 
--- | Please see the README on GitHub at
---   <a>https://github.com/mstksg/typelits-printf#readme</a>
+-- | Type-safe printf from parsing GHC Typelits
+--   
+--   An extensible and type-safe printf, matching the semantics of
+--   <a>P.printf</a> from <a>Text.Printf</a> in <i>base</i>. The difference
+--   is that the variants here will always fail to compile if given
+--   arguments of the wrong type (or too many or too little arguments).
+--   Most of the variants also provide useful type feedback, telling you
+--   the type of arguments it expects and how many when queried with
+--   <tt>:t</tt> or with typed holes.
+--   
+--   See README and documentation of <a>GHC.TypeLits.Printf</a> for more
+--   information
 @package typelits-printf
 @version 0.1.0.0
 
