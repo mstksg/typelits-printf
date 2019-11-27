@@ -110,6 +110,7 @@ type EvalParser (p :: Parser a) str = EvalHelp (RunParser p str) :: Maybe a
 
 type family EvalHelp_ (r :: Maybe (a, [SChar])) :: a where
     EvalHelp_ ('Just '(x, str)) = x
+    EvalHelp_ 'Nothing          = TypeError ('Text "Parse failed")
 type EvalParser_ (p :: Parser a) str = EvalHelp_ (RunParser p str) :: a
 
 type family CharDigit (c :: SChar) :: Maybe Nat where

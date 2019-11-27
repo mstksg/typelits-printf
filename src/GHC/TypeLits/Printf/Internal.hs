@@ -290,7 +290,7 @@ class RPrintf (str :: Symbol) ps where
     -- FormatArgs '["f", "s"] -> String
     rprintf_ :: p str -> FormatArgs ps -> String
 
-instance (Listify str lst, 'Just ffs ~ ParseFmtStr lst, RFormat ffs ps) => RPrintf str ps where
+instance (Listify str lst, ffs ~ ParseFmtStr_ lst, RFormat ffs ps) => RPrintf str ps where
     rprintf_ _ = ($ "") . rformat (Proxy @ffs)
 
 -- | The typeclass supporting polyarity used by
@@ -300,8 +300,8 @@ instance (Listify str lst, 'Just ffs ~ ParseFmtStr lst, RFormat ffs ps) => RPrin
 --
 -- Ideally, you will never have to run into this typeclass or have to deal
 -- with it.  It will come up if you ask for the type of
--- 'GHC.TypeLits.Printf.printf', or if you give the wrong number or type of
--- arguments to it.
+-- 'GHC.TypeLits.Printf.printf', or sometimes if you give the wrong number
+-- or type of arguments to it.
 --
 -- >>> :t printf @"You have %.2f dollars, %s"
 -- FormatFun '[ Right ..., 'Left " dollars ", 'Right ...] fun => fun
@@ -323,27 +323,68 @@ instance (Listify str lst, 'Just ffs ~ ParseFmtStr lst, RFormat ffs ps) => RPrin
 -- way that "Text.Printf" works.  We also support using strict 'T.Text'
 -- lazy 'TL.Text' as well.
 --
--- Note that while it is somewhat possible to "reason with" or get type
--- feedback from this (as shown above), it is nowhere near the level of
--- clarity as 'GHC.TypeLits.Printf.pprintf' or
--- 'GHC.TypeLits.Printf.rprintf'.  And, if things go wrong (like passing
--- too many or too little arguments, or arguments of the wrong type), the
--- error messages are not going to be as useful.  However, there are some
--- measures put into place to make type errors more feasible for debugging,
--- and I'm open for suggestions for improvement methods, as well!
+-- So, while it's possible to reason with this using the types, it's
+-- usually more difficult than with 'pprintf' and 'rprintf'.
 --
--- Some guidelines for making sure the type-checking and debugging story
--- goes as nicely as possible:
+-- This is why, instead of reasoning with this using its types, it's easier
+-- to reason with it using the errors instead:
 --
--- * Make sure the result type is always known monomorphically.  Sometimes
---   this means requiring an explicit annotation, like @printf ... ::
---   String@.
--- * Make sure all the values you give to this have known monomorphic
---   types, as well.
+-- >>> printf @"You have %.2f dollars, %s"
+-- -- ERROR: Call to printf missing argument fulfilling "%.2f"
+-- -- Either provide an argument or rewrite the format string to not expect
+-- -- one.
+-- 
+-- >>> printf @"You have %.2f dollars, %s" 3.62
+-- -- ERROR: Call to printf missing argument fulfilling "%s"
+-- -- Either provide an argument or rewrite the format string to not expect
+-- -- one.
+-- 
+-- >>> printf @"You have %.2f dollars, %s" 3.62 "Luigi"
+-- You have 3.62 dollars, Luigi
+-- 
+-- >>> printf @"You have %.2f dollars, %s" 3.62 "Luigi" 72
+-- -- ERROR: An extra argument of type Integer was given to a call to printf
+-- -- Either remove the argument, or rewrite the format string to include the
+-- -- appropriate hole.
+--
+-- If you're having problems getting the error messages to give helpful
+-- feedback, try using 'pHelp':
+--
+-- >>> pHelp $ printf @"You have %.2f dollars, %s" 3.62
+-- -- ERROR: Call to printf missing argument fulfilling "%s"
+-- -- Either provide an argument or rewrite the format string to not expect
+-- -- one.
+--
+-- 'pHelp' can give the type system the nudge it needs to provide good
+-- errors.
 class FormatFun (ffs :: [Either Symbol FieldFormat]) fun where
     formatFun :: p ffs -> String -> fun
 
-newtype PHelp = PHelp { pHelp :: String }
+-- | A useful token for helping the type system give useful errors for
+-- 'printf':
+--
+-- >>> printf @"You have ".2f" dollars, %s" 3.26 :: PHelp
+-- -- ERROR: Call to printf missing argument fulfilling "%s"
+-- -- Either provide an argument or rewrite the format string to not expect
+-- -- one.
+--
+-- Usually things should work out on their own without needing this ... but
+-- sometimes the type system could need a nudge.
+--
+-- See also 'pHelp'
+newtype PHelp = PHelp {
+    -- | A useful helper function for helping the type system give useful
+    -- errors for 'printf':
+    --
+    -- >>> pHelp $ printf @"You have %.2f dollars, %s" 3.62
+    -- -- ERROR: Call to printf missing argument fulfilling "%s"
+    -- -- Either provide an argument or rewrite the format string to not expect
+    -- -- one.
+    --
+    -- Usually things would work out on their own without needing this ...
+    -- but sometimes the type system could need a nudge.
+    pHelp :: String
+  }
 
 instance (a ~ Char) => FormatFun '[] [a] where
     formatFun _ = id
@@ -382,7 +423,7 @@ type family MissingError ff where
     MissingError ff = 'Text "Call to printf missing an argument fulfilling \"%"
                 ':<>: 'Text (ShowFormat ff)
                 ':<>: 'Text "\""
-                ':$$: 'Text "Either provide the argument or rewrite the format string to not expect one."
+                ':$$: 'Text "Either provide an argument or rewrite the format string to not expect one."
 
 instance TypeError (MissingError ff) => FormatFun ('Right ff ': ffs) String where
     formatFun _ = error
@@ -405,7 +446,7 @@ class Printf (str :: Symbol) fun where
     -- You have 3.62 dollars, Luigi
     printf_ :: p str -> fun
 
-instance (Listify str lst, 'Just ffs ~ ParseFmtStr lst, FormatFun ffs fun) => Printf str fun where
+instance (Listify str lst, ffs ~ ParseFmtStr_ lst, FormatFun ffs fun) => Printf str fun where
     printf_ _ = formatFun (Proxy @ffs) ""
 
 -- | Utility type powering 'pfmt'.  See dcumentation for 'pfmt' for more
@@ -422,7 +463,7 @@ newtype PFmt c = PFmt P.FieldFormat
 -- >>> pfmt (mkPFmt_ (Proxy :: Proxy ".2f") 3.6234124
 -- "3.62"
 mkPFmt_
-    :: forall str lst ff f w q m c p. (Listify str lst, 'Just ff ~ ParseFmt lst, Reflect ff, ff ~ 'FF f w q m c)
+    :: forall str lst ff f w q m c p. (Listify str lst, ff ~ ParseFmt_ lst, Reflect ff, ff ~ 'FF f w q m c)
     => p str
     -> PFmt c
 mkPFmt_ _ = PFmt ff
@@ -436,11 +477,11 @@ mkPFmt_ _ = PFmt ff
 -- >>> pfmt (mkPFmt @".2f") 3.6234124
 -- "3.62"
 mkPFmt
-    :: forall str lst ff f w q m c. (Listify str lst, 'Just ff ~ ParseFmt lst, Reflect ff, ff ~ 'FF f w q m c)
+    :: forall str lst ff f w q m c. (Listify str lst, ff ~ ParseFmt_ lst, Reflect ff, ff ~ 'FF f w q m c)
     => PFmt c
 mkPFmt = mkPFmt_ @str @lst (Proxy @str)
 
-instance (Listify str lst, 'Just ff ~ ParseFmt lst, Reflect ff, ff ~ 'FF f w p m c) => IsLabel str (PFmt c) where
+instance (Listify str lst, ff ~ ParseFmt_ lst, Reflect ff, ff ~ 'FF f w p m c) => IsLabel str (PFmt c) where
     fromLabel = mkPFmt @str @lst
 
 -- | Parse and run a /single/ format hole on a single vale.  Can be useful

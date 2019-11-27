@@ -24,6 +24,10 @@ You have 3.62 dollars, Luigi
 
 ghci> putStrLn $ printf @"You have %.2f dollars, %s" 3.62 "Luigi"
 You have 3.62 dollars, Luigi
+
+-- printf also supports directly printing, like in Text.Printf
+ghci> printf @"You have %.2f dollars, %s" 3.62 "Luigi"
+You have 3.62 dollars, Luigi
 ```
 
 Now comparing their types:
@@ -45,24 +49,38 @@ FormatFun '[ .... ] fun => fun
 *   `rprintf` tells you you need a two-item hlist (from "Data.Vinyl.Core"),
     where the first item implements `f` and the second item implements `s`:
     `3.62 :% "Luigi" :% RNil` will do.
-*   The type of `printf` is much less informative.  It's possible to see what
-    you need from the `...` in `FormatFun`...but it's basically a situation
-    that works fine when it does, but can be tricky if you mess up.  The
-    up-side is that it is the cleanest to call if you already know what you
-    need: you can just give the arguments plainly, like `3.62` and `"Luigi"`.
+*   The type of `printf` doesn't tell you immediately what you
+    you need.  However, if you do try to use it, the type errors will guide you
+    along the way, iteratively.
 
-    Debugging it might not be so fun, but at least all debugging is
-    compile-time: you won't be able to compile-it until it is correct, so that
-    means you won't be dealing with run-time errors.
+    ```haskell
+    ghci> printf @"You have %.2f dollars, %s"
+    -- ERROR: Call to printf missing argument fulfilling "%.2f"
+    -- Either provide an argument or rewrite the format string to not expect
+    -- one.
+
+    ghci> printf @"You have %.2f dollars, %s" 3.62
+    -- ERROR: Call to printf missing argument fulfilling "%s"
+    -- Either provide an argument or rewrite the format string to not expect
+    -- one.
+
+    ghci> printf @"You have %.2f dollars, %s" 3.62 "Luigi"
+    You have 3.62 dollars, Luigi
+
+    ghci> printf @"You have %.2f dollars, %s" 3.62 "Luigi" 72
+    -- ERROR: An extra argument of type Integer was given to a call to printf
+    -- Either remove the argument, or rewrite the format string to include the
+    -- appropriate hole.
+    ```
 
 The following table summarizes the features and drawbacks of each
 method:
 
-| Method    | True Polyarity   | Naked Arguments    | Type feedback            |
-| --------- | ---------------- | ------------------ | ------------------------ |
-| `pprintf` | Yes              | No (requires `PP`) | Yes                      |
-| `rprintf` | No (HList-based) | Yes                | Yes                      |
-| `printf`  | Yes              | Yes                | No (Bad errors/guidance) |
+| Method    | True Polyarity   | Naked Arguments    | Type feedback        |
+| --------- | ---------------- | ------------------ | -------------------- |
+| `pprintf` | Yes              | No (requires `PP`) | Yes                  |
+| `rprintf` | No (HList-based) | Yes                | Yes                  |
+| `printf`  | Yes              | Yes                | Partial (via errors) |
 
 *Ideally* we would have a solution that has all three.  However, as of now, we
 have a "pick two" sort of situation.  Suggestions are definitely welcome,

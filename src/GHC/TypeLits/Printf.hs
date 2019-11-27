@@ -65,23 +65,40 @@
 --   mess up. The up-side is that it is the cleanest to call if you already
 --   know what you need: you can just give the arguments plainly, like
 --   @3.62@ and @"Luigi"@.
+-- * The type of `printf` doesn't tell you immediately what you
+--   you need.  However, if you do try to use it, the type errors will guide you
+--   along the way, iteratively.
 --
---   Debugging it might not be so fun, but at least all debugging is
---   compile-time: you won't be able to compile-it until it is correct, so that
---   means you won't be dealing with run-time errors.
+--   >>> printf @"You have %.2f dollars, %s"
+--   -- ERROR: Call to printf missing argument fulfilling "%.2f"
+--   -- Either provide an argument or rewrite the format string to not expect
+--   -- one.
+--
+--   >>> printf @"You have %.2f dollars, %s" 3.62
+--   -- ERROR: Call to printf missing argument fulfilling "%s"
+--   -- Either provide an argument or rewrite the format string to not expect
+--   -- one.
+--
+--   >>> printf @"You have %.2f dollars, %s" 3.62 "Luigi"
+--   You have 3.62 dollars, Luigi
+--
+--   >>> printf @"You have %.2f dollars, %s" 3.62 "Luigi" 72
+--   -- ERROR: An extra argument of type Integer was given to a call to printf
+--   -- Either remove the argument, or rewrite the format string to include the
+--   -- appropriate hole.
 --
 -- The following table summarizes the features and drawbacks of each
 -- method:
 --
--- +-----------+------------------+--------------------+--------------------------+
--- | Method    | True Polyarity   | Naked Arguments    | Type feedback            |
--- +===========+==================+====================+==========================+
--- | 'pprintf' | Yes              | No (requires 'PP') | Yes                      |
--- +-----------+------------------+--------------------+--------------------------+
--- | 'rprintf' | No (HList-based) | Yes                | Yes                      |
--- +-----------+------------------+--------------------+--------------------------+
--- | 'printf'  | Yes              | Yes                | No (Bad errors/guidance) |
--- +-----------+------------------+--------------------+--------------------------+
+-- +-----------+------------------+--------------------+----------------------+
+-- | Method    | True Polyarity   | Naked Arguments    | Type feedback        |
+-- +===========+==================+====================+======================+
+-- | 'pprintf' | Yes              | No (requires 'PP') | Yes                  |
+-- +-----------+------------------+--------------------+----------------------+
+-- | 'rprintf' | No (HList-based) | Yes                | Yes                  |
+-- +-----------+------------------+--------------------+----------------------+
+-- | 'printf'  | Yes              | Yes                | Partial (via errors) |
+-- +-----------+------------------+--------------------+----------------------+
 --
 -- /Ideally/ we would have a solution that has all three.  However, as of
 -- now, we have a "pick two" sort of situation.  Suggestions are definitely
@@ -186,11 +203,10 @@ pprintf_ p = rcurry @ps (rprintf_ p)
 -- You have 3.62 dollars, Luigi
 --
 -- See 'printf' for a polyariadic method that doesn't require 'PP' on its
--- inputs, but doesn't have as usable a type when queried before supplying
--- its arguments, and 'rprintf' for a fake-polyariadic method that doesn't
--- require 'PP', but requires arguments in a single list instead. Also see
--- top-level module documentation  "GHC.TypeLits.Printf" for a more
--- comprehensive summary.
+-- inputs, but with a less helpful type signature, and 'rprintf' for
+-- a fake-polyariadic method that doesn't require 'PP', but requires
+-- arguments in a single list instead. Also see top-level module
+-- documentation  "GHC.TypeLits.Printf" for a more comprehensive summary.
 pprintf :: forall str ps. (RPrintf str ps, RecordCurry ps) => CurriedF PP ps String
 pprintf = pprintf_ @str @ps (Proxy @str)
 
@@ -200,37 +216,41 @@ pprintf = pprintf_ @str @ps (Proxy @str)
 -- >>> putStrLn $ printf @"You have %.2f dollars, %s" 3.62 "Luigi"
 -- You have 3.62 dollars, Luigi
 --
--- If you what the type of this function unapplied (or with not enough
--- arguments), or try to use it with typed holes or type-guided
--- development, the type errors aren't going to be pretty in most
--- situations.  In addition, you always have to make sure the result type
--- can be inferred as 'String', which may require a type annotation in some
--- situations.
+-- While the type of @'printf' \@"my fmt string"@ isn't going to be very
+-- helpful, the error messages should help guide you along the way:
 --
--- (Measures have been taken to make the error messages as helpful as
--- possible, but they're not going to be as pretty as for 'pprintf' or
--- 'rprintf'.  See 'FormatFun' documentation for ways to get some limited
--- type feedback from this function.)
+-- >>> printf @"You have %.2f dollars, %s"
+-- -- ERROR: Call to printf missing argument fulfilling "%.2f"
+-- -- Either provide an argument or rewrite the format string to not expect
+-- -- one.
 --
--- Essentially, this is easier to use if you have all the right arguments
--- in place...but more difficult to debug (at compiletime) if you mess up.
+-- >>> printf @"You have %.2f dollars, %s" 3.62
+-- -- ERROR: Call to printf missing argument fulfilling "%s"
+-- -- Either provide an argument or rewrite the format string to not expect
+-- -- one.
 --
--- Some guidelines for making sure the type-checking and debugging story
--- goes as nicely as possible:
+-- >>> printf @"You have %.2f dollars, %s" 3.62 "Luigi"
+-- You have 3.62 dollars, Luigi
 --
--- * Make sure the result type is always known monomorphically.  Sometimes
---   this means requiring an explicit annotation, like @printf ... ::
---   String@.
--- * Make sure all the values you give to this have known monomorphic
---   types, as well.
+-- >>> printf @"You have %.2f dollars, %s" 3.62 "Luigi" 72
+-- -- ERROR: An extra argument of type Integer was given to a call to printf
+-- -- Either remove the argument, or rewrite the format string to include the
+-- -- appropriate hole.
 --
--- /However/, all debugging should still be only at compile-time.  Once it
--- compiles, it's safe --- code with missing or badly typed arguments will
--- not compile, and so won't give you any runtime errors.
+-- If you're having problems getting the error messages to give helpful
+-- feedback, try using 'pHelp':
 --
--- See 'pprintf' for a version of this with much nicer types and type
--- errors, but requires wrapping arguments, and 'rprintf' for a version of
--- this with "fake" polyarity, taking a list as input instead. Also see
+-- >>> pHelp $ printf @"You have %.2f dollars, %s" 3.62
+-- -- ERROR: Call to printf missing argument fulfilling "%s"
+-- -- Either provide an argument or rewrite the format string to not expect
+-- -- one.
+--
+-- 'pHelp' can give the type system the nudge it needs to provide good
+-- errors.
+--
+-- See 'pprintf' for a version of this with nicer types and type errors,
+-- but requires wrapping arguments, and 'rprintf' for a version of this
+-- with "fake" polyarity, taking a list as input instead. Also see
 -- top-level module documentation  "GHC.TypeLits.Printf" for a more
 -- comprehensive summary.
 --
