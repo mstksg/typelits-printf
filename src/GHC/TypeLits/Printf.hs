@@ -52,12 +52,16 @@
 -- >>> :t printf @"You have %.2f dollars, %s" 3.62 "Luigi"
 -- FormatFun '[ .... ] fun => fun
 --
--- The 'pprintf' and 'rprintf' versions are informative: for 'pprintf', it
--- shows you need two arguments: A @'PP' "f"@ (which is a value that
--- supports being formatted by @f@) like @PP 3.62@, and a @'PP' "s"@,
--- like @PP "Luigi"@.  'rprintf' tells you you need a two-item hlist (from
--- "Data.Vinyl.Core"), where the first item implements @f@ and the second
--- item implements @s@: @3.62 ':%' "Luigi" :% 'RNil'@ will do.
+-- * For 'pprintf', it shows you need two arguments: A @'PP' "f"@ (which is
+--   a value that supports being formatted by @f@) like @PP 3.62@, and
+--   a @'PP' "s"@, like @PP "Luigi"@.
+-- * 'rprintf' tells you you need a two-item hlist (from
+--   "Data.Vinyl.Core"), where the first item implements @f@ and the second
+--   item implements @s@: @3.62 ':%' "Luigi" :% 'RNil'@ will do.
+-- * The type of 'printf' is much less informative.  It's possible to see
+--   what you need from the @...@ in 'FormatFun'...but it's basically
+--   a situation that works fine when it doesn't, but can be tricky if you
+--   mess up.
 --
 -- The following table summarizes the features and drawbacks of each
 -- method:
