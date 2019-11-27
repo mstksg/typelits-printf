@@ -281,10 +281,10 @@ forall k (t :: k). Proxy t
 </span><span id="line-203"></span><span>
 </span><span id="line-204"></span><span class="hs-comment">-- | Type-safe printf with faked polyarity.  Pass in a &quot;list&quot; of arguments</span><span>
 </span><span id="line-205"></span><span class="hs-comment">-- (using ':%' and 'RNil'), instead of as multiple arguments.  Call it like</span><span>
-</span><span id="line-206"></span><span class="hs-comment">-- @'rprintf' @&quot;you have %.02f dollars, %s&quot;@.</span><span>
+</span><span id="line-206"></span><span class="hs-comment">-- @'rprintf' \@&quot;you have %.02f dollars, %s&quot;@.</span><span>
 </span><span id="line-207"></span><span class="hs-comment">--</span><span>
 </span><span id="line-208"></span><span class="hs-comment">-- &gt;&gt;&gt; :t rprintf @&quot;You have %.2f dollars, %s&quot;</span><span>
-</span><span id="line-209"></span><span class="hs-comment">-- FormatArgs '[&quot;f&quot;, &quot;s&quot;] -&gt; 'String'</span><span>
+</span><span id="line-209"></span><span class="hs-comment">-- FormatArgs '[&quot;f&quot;, &quot;s&quot;] -&gt; String</span><span>
 </span><span id="line-210"></span><span class="hs-comment">--</span><span>
 </span><span id="line-211"></span><span class="hs-comment">-- This means that it is expecting something that can be printed with @f@</span><span>
 </span><span id="line-212"></span><span class="hs-comment">-- and something that can be printed with @s@.  We can provide a 'Double'</span><span>
@@ -331,14 +331,14 @@ p str -&gt; FormatArgs ps -&gt; String
 </span><a href="GHC.TypeLits.Printf.html#rprintf_"><span class="hs-identifier hs-var">rprintf_</span></a></span><span> </span><span class="annot"><span class="annottext">p str
 </span><a href="#local-6989586621679084467"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">)</span><span>
 </span><span id="line-231"></span><span>
-</span><span id="line-232"></span><span class="hs-comment">-- | Type-safe printf with true guarded polyarity.  Call it like @'printf'</span><span>
-</span><span id="line-233"></span><span class="hs-comment">-- @&quot;you have %.02f dollars, %s&quot;@.</span><span>
+</span><span id="line-232"></span><span class="hs-comment">-- | Type-safe printf with true guarded polyarity.  Call it like @'pprintf'</span><span>
+</span><span id="line-233"></span><span class="hs-comment">-- \@&quot;you have %.02f dollars, %s&quot;@.</span><span>
 </span><span id="line-234"></span><span class="hs-comment">--</span><span>
 </span><span id="line-235"></span><span class="hs-comment">-- A call to printf on a valid string will /always/ give a well-defined</span><span>
 </span><span id="line-236"></span><span class="hs-comment">-- type for a function in return:</span><span>
 </span><span id="line-237"></span><span class="hs-comment">--</span><span>
 </span><span id="line-238"></span><span class="hs-comment">-- &gt;&gt;&gt; :t pprintf @&quot;You have %.2f dollars, %s&quot;</span><span>
-</span><span id="line-239"></span><span class="hs-comment">-- 'PP' &quot;f&quot; -&gt; 'PP' &quot;s&quot; -&gt; 'String'</span><span>
+</span><span id="line-239"></span><span class="hs-comment">-- PP &quot;f&quot; -&gt; PP &quot;s&quot; -&gt; String</span><span>
 </span><span id="line-240"></span><span class="hs-comment">--</span><span>
 </span><span id="line-241"></span><span class="hs-comment">-- You can always query the type, and get a well-defined type back, which</span><span>
 </span><span id="line-242"></span><span class="hs-comment">-- you can utilize using typed holes or other type-guided development</span><span>
@@ -440,7 +440,7 @@ forall k (t :: k). Proxy t
 </span><span class="hs-identifier hs-var">Proxy</span></span><span> </span><span class="hs-glyph">@</span><span class="annot"><a href="#local-6989586621679084437"><span class="hs-identifier hs-type">ffs</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-string">&quot;&quot;</span></span></span></span></span></span><span>
 </span><span id="line-276"></span><span>
 </span><span id="line-277"></span><span class="hs-comment">-- | Type-safe printf with true naked polyarity.  Call it like @'printf'</span><span>
-</span><span id="line-278"></span><span class="hs-comment">-- @&quot;you have %.02f dollars, %s&quot;@.</span><span>
+</span><span id="line-278"></span><span class="hs-comment">-- \@&quot;you have %.02f dollars, %s&quot;@.</span><span>
 </span><span id="line-279"></span><span class="hs-comment">--</span><span>
 </span><span id="line-280"></span><span class="hs-comment">-- &gt;&gt;&gt; putStrLn $ printf @&quot;You have %.2f dollars, %s&quot; 3.62 &quot;Luigi&quot;</span><span>
 </span><span id="line-281"></span><span class="hs-comment">-- You have 3.62 dollars, Luigi</span><span>

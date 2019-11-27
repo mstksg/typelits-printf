@@ -124,14 +124,14 @@ formatArg :: (FormatChar t a, PrintfArg a) => p t -> a -> FieldFormat -> ShowS
 type SChar = Symbol
 
 -- | Type-safe printf with true guarded polyarity. Call it like
---   <tt><a>printf</a> </tt>"you have %.02f dollars, %s"@.
+--   <tt><a>pprintf</a> @"you have %.02f dollars, %s"</tt>.
 --   
 --   A call to printf on a valid string will <i>always</i> give a
 --   well-defined type for a function in return:
 --   
 --   <pre>
 --   &gt;&gt;&gt; :t pprintf @"You have %.2f dollars, %s"
---   'PP' "f" -&gt; 'PP' "s" -&gt; 'String'
+--   PP "f" -&gt; PP "s" -&gt; String
 --   </pre>
 --   
 --   You can always query the type, and get a well-defined type back, which
@@ -181,11 +181,11 @@ type FormatArgs = Rec PP
 
 -- | Type-safe printf with faked polyarity. Pass in a "list" of arguments
 --   (using <a>:%</a> and <a>RNil</a>), instead of as multiple arguments.
---   Call it like <tt><a>rprintf</a> </tt>"you have %.02f dollars, %s"@.
+--   Call it like <tt><a>rprintf</a> @"you have %.02f dollars, %s"</tt>.
 --   
 --   <pre>
 --   &gt;&gt;&gt; :t rprintf @"You have %.2f dollars, %s"
---   FormatArgs '["f", "s"] -&gt; 'String'
+--   FormatArgs '["f", "s"] -&gt; String
 --   </pre>
 --   
 --   This means that it is expecting something that can be printed with
@@ -204,7 +204,7 @@ rprintf :: forall str ps. RPrintf str ps => FormatArgs ps -> String
 rprintf_ :: RPrintf str ps => p str -> FormatArgs ps -> String
 
 -- | Type-safe printf with true naked polyarity. Call it like
---   <tt><a>printf</a> </tt>"you have %.02f dollars, %s"@.
+--   <tt><a>printf</a> @"you have %.02f dollars, %s"</tt>.
 --   
 --   <pre>
 --   &gt;&gt;&gt; putStrLn $ printf @"You have %.2f dollars, %s" 3.62 "Luigi"
