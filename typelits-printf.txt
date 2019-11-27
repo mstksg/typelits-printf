@@ -8,15 +8,15 @@
 @version 0.1.0.0
 
 
--- | "Type-safe printf", matching the semantics of <a>printf</a> from
---   <a>Text.Printf</a> in <i>base</i>. The difference is that the variants
---   here will always fail to compile if given arguments of the wrong type
---   (or too many or too little arguments). Most of the variants also
---   provide useful type feedback, telling you the type of arguments it
---   expects and how many when queried with <tt>:t</tt> or with typed
---   holes. See documentation in <a>Text.Printf</a> for details on how this
---   formats items of various types, and the differences with C
---   <tt>printf(3)</tt>.
+-- | An extensible and type-safe printf, matching the semantics of
+--   <a>printf</a> from <a>Text.Printf</a> in <i>base</i>. The difference
+--   is that the variants here will always fail to compile if given
+--   arguments of the wrong type (or too many or too little arguments).
+--   Most of the variants also provide useful type feedback, telling you
+--   the type of arguments it expects and how many when queried with
+--   <tt>:t</tt> or with typed holes. See documentation in
+--   <a>Text.Printf</a> for details on how this formats items of various
+--   types, and the differences with C <tt>printf(3)</tt>.
 --   
 --   Comparing their usage/calling conventions:
 --   
@@ -53,6 +53,9 @@
 --   <tt>f</tt> and the second item implements <tt>s</tt>: <tt>3.62
 --   <a>:%</a> <a>Luigi</a> :% <a>RNil</a></tt> will do.
 --   
+--   The following table summarizes the features and drawbacks of each
+--   method:
+--   
 --   TODO: table
 --   
 --   <i>Ideally</i> we would have a solution that has all three. However,
@@ -60,8 +63,8 @@
 --   definitely welcome, however, if you find something that satisfies all
 --   three benefits while still allowing for polymorphism!
 --   
---   You can provide instances for your own custom types by writing an
---   instance of <a>FormatChar</a>.
+--   You can extend functionality with formatting for your own types by
+--   providing instances of <tt>FormatChar</tt>.
 module GHC.TypeLits.Printf
 
 -- | Typeclass associating format types (<tt>d</tt>, <tt>f</tt>, etc.) with

@@ -25,7 +25,7 @@
 </span><span id="line-25"></span><span class="hs-comment">-- Stability   : experimental</span><span>
 </span><span id="line-26"></span><span class="hs-comment">-- Portability : non-portable</span><span>
 </span><span id="line-27"></span><span class="hs-comment">--</span><span>
-</span><span id="line-28"></span><span class="hs-comment">-- &quot;Type-safe printf&quot;, matching the semantics of 'P.printf' from</span><span>
+</span><span id="line-28"></span><span class="hs-comment">-- An extensible and type-safe printf, matching the semantics of 'P.printf' from</span><span>
 </span><span id="line-29"></span><span class="hs-comment">-- &quot;Text.Printf&quot; in /base/.  The difference is that the variants here will</span><span>
 </span><span id="line-30"></span><span class="hs-comment">-- always fail to compile if given arguments of the wrong type (or too many</span><span>
 </span><span id="line-31"></span><span class="hs-comment">-- or too little arguments).  Most of the variants also provide useful type</span><span>
@@ -59,66 +59,69 @@
 </span><span id="line-59"></span><span class="hs-comment">-- &quot;Data.Vinyl.Core&quot;), where the first item implements @f@ and the second</span><span>
 </span><span id="line-60"></span><span class="hs-comment">-- item implements @s@: @3.62 ':%' &quot;Luigi&quot; :% 'RNil'@ will do.</span><span>
 </span><span id="line-61"></span><span class="hs-comment">--</span><span>
-</span><span id="line-62"></span><span class="hs-comment">-- +-----------+------------------+--------------------+--------------------------+</span><span>
-</span><span id="line-63"></span><span class="hs-comment">-- | Method    | True Polyarity   | Naked Arguments    | Type feedback            |</span><span>
-</span><span id="line-64"></span><span class="hs-comment">-- +===========+==================+====================+==========================+</span><span>
-</span><span id="line-65"></span><span class="hs-comment">-- | 'pprintf' | Yes              | No (requires 'PP') | Yes                      |</span><span>
-</span><span id="line-66"></span><span class="hs-comment">-- +-----------+------------------+--------------------+--------------------------+</span><span>
-</span><span id="line-67"></span><span class="hs-comment">-- | 'rprintf' | No (HList-based) | Yes                | Yes                      |</span><span>
-</span><span id="line-68"></span><span class="hs-comment">-- +-----------+------------------+--------------------+--------------------------+</span><span>
-</span><span id="line-69"></span><span class="hs-comment">-- | 'printf'  | Yes              | Yes                | No (Bad errors/guidance) |</span><span>
-</span><span id="line-70"></span><span class="hs-comment">-- +-----------+------------------+--------------------+--------------------------+</span><span>
-</span><span id="line-71"></span><span class="hs-comment">--</span><span>
-</span><span id="line-72"></span><span class="hs-comment">-- /Ideally/ we would have a solution that has all three.  However, as of</span><span>
-</span><span id="line-73"></span><span class="hs-comment">-- now, we have a &quot;pick two&quot; sort of situation.  Suggestions are definitely</span><span>
-</span><span id="line-74"></span><span class="hs-comment">-- welcome, however, if you find something that satisfies all three</span><span>
-</span><span id="line-75"></span><span class="hs-comment">-- benefits while still allowing for polymorphism!</span><span>
-</span><span id="line-76"></span><span class="hs-comment">--</span><span>
-</span><span id="line-77"></span><span class="hs-comment">-- You can provide instances for your own custom types by writing an</span><span>
-</span><span id="line-78"></span><span class="hs-comment">-- instance of 'FormatChar'.</span><span>
-</span><span id="line-79"></span><span>
-</span><span id="line-80"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">GHC.TypeLits.Printf</span><span> </span><span class="hs-special">(</span><span>
-</span><span id="line-81"></span><span>  </span><span class="annot"><span class="hs-comment">-- * Formattable things</span></span><span>
-</span><span id="line-82"></span><span>    </span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.html#FormatChar"><span class="hs-identifier">FormatChar</span></a></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
-</span><span id="line-83"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.Parser.html#SChar"><span class="hs-identifier">SChar</span></a></span><span>
-</span><span id="line-84"></span><span>  </span><span class="annot"><span class="hs-comment">-- * Guarded polyarity</span></span><span>
-</span><span id="line-85"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.html#pprintf"><span class="hs-identifier">pprintf</span></a></span><span>
-</span><span id="line-86"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.html#pprintf_"><span class="hs-identifier">pprintf_</span></a></span><span>
-</span><span id="line-87"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.html#PP"><span class="hs-identifier">PP</span></a></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
-</span><span id="line-88"></span><span>  </span><span class="annot"><span class="hs-comment">-- * List-based polyarity</span></span><span>
-</span><span id="line-89"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.html#rprintf"><span class="hs-identifier">rprintf</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.html#rprintf_"><span class="hs-identifier">rprintf_</span></a></span><span>
-</span><span id="line-90"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">Rec</span></span><span class="hs-special">(</span><span class="annot"><a href="GHC.TypeLits.Printf.html#%3A%25"><span class="hs-operator">(:%)</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">RNil</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.html#FormatArgs"><span class="hs-identifier">FormatArgs</span></a></span><span>
-</span><span id="line-91"></span><span>  </span><span class="annot"><span class="hs-comment">-- * Unguarded polyarity</span></span><span>
-</span><span id="line-92"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.html#printf"><span class="hs-identifier">printf</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.html#printf_"><span class="hs-identifier">printf_</span></a></span><span>
-</span><span id="line-93"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.html#FormatFun"><span class="hs-identifier">FormatFun</span></a></span><span>
-</span><span id="line-94"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
-</span><span id="line-95"></span><span>
-</span><span id="line-96"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Proxy</span></span><span>
-</span><span id="line-97"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Vinyl</span></span><span>
-</span><span id="line-98"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Vinyl.Curry</span></span><span>
-</span><span id="line-99"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.html"><span class="hs-identifier">GHC.TypeLits.Printf.Internal</span></a></span><span>
-</span><span id="line-100"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="GHC.TypeLits.Printf.Parse.html"><span class="hs-identifier">GHC.TypeLits.Printf.Parse</span></a></span><span>
-</span><span id="line-101"></span><span>
-</span><span id="line-102"></span><span class="hs-comment">-- | Type-safe printf with faked polyarity.  Pass in a &quot;list&quot; of arguments</span><span>
-</span><span id="line-103"></span><span class="hs-comment">-- (using ':%' and 'RNil'), instead of as multiple arguments.  Call it like</span><span>
-</span><span id="line-104"></span><span class="hs-comment">-- @'rprintf' \@&quot;you have %.02f dollars, %s&quot;@.</span><span>
-</span><span id="line-105"></span><span class="hs-comment">--</span><span>
-</span><span id="line-106"></span><span class="hs-comment">-- &gt;&gt;&gt; :t rprintf @&quot;You have %.2f dollars, %s&quot;</span><span>
-</span><span id="line-107"></span><span class="hs-comment">-- FormatArgs '[&quot;f&quot;, &quot;s&quot;] -&gt; String</span><span>
+</span><span id="line-62"></span><span class="hs-comment">-- The following table summarizes the features and drawbacks of each</span><span>
+</span><span id="line-63"></span><span class="hs-comment">-- method:</span><span>
+</span><span id="line-64"></span><span class="hs-comment">--</span><span>
+</span><span id="line-65"></span><span class="hs-comment">-- +-----------+------------------+--------------------+--------------------------+</span><span>
+</span><span id="line-66"></span><span class="hs-comment">-- | Method    | True Polyarity   | Naked Arguments    | Type feedback            |</span><span>
+</span><span id="line-67"></span><span class="hs-comment">-- +===========+==================+====================+==========================+</span><span>
+</span><span id="line-68"></span><span class="hs-comment">-- | 'pprintf' | Yes              | No (requires 'PP') | Yes                      |</span><span>
+</span><span id="line-69"></span><span class="hs-comment">-- +-----------+------------------+--------------------+--------------------------+</span><span>
+</span><span id="line-70"></span><span class="hs-comment">-- | 'rprintf' | No (HList-based) | Yes                | Yes                      |</span><span>
+</span><span id="line-71"></span><span class="hs-comment">-- +-----------+------------------+--------------------+--------------------------+</span><span>
+</span><span id="line-72"></span><span class="hs-comment">-- | 'printf'  | Yes              | Yes                | No (Bad errors/guidance) |</span><span>
+</span><span id="line-73"></span><span class="hs-comment">-- +-----------+------------------+--------------------+--------------------------+</span><span>
+</span><span id="line-74"></span><span class="hs-comment">--</span><span>
+</span><span id="line-75"></span><span class="hs-comment">-- /Ideally/ we would have a solution that has all three.  However, as of</span><span>
+</span><span id="line-76"></span><span class="hs-comment">-- now, we have a &quot;pick two&quot; sort of situation.  Suggestions are definitely</span><span>
+</span><span id="line-77"></span><span class="hs-comment">-- welcome, however, if you find something that satisfies all three</span><span>
+</span><span id="line-78"></span><span class="hs-comment">-- benefits while still allowing for polymorphism!</span><span>
+</span><span id="line-79"></span><span class="hs-comment">--</span><span>
+</span><span id="line-80"></span><span class="hs-comment">-- You can extend functionality with formatting for your own types by</span><span>
+</span><span id="line-81"></span><span class="hs-comment">-- providing instances of @FormatChar@.</span><span>
+</span><span id="line-82"></span><span>
+</span><span id="line-83"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">GHC.TypeLits.Printf</span><span> </span><span class="hs-special">(</span><span>
+</span><span id="line-84"></span><span>  </span><span class="annot"><span class="hs-comment">-- * Formattable things</span></span><span>
+</span><span id="line-85"></span><span>    </span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.html#FormatChar"><span class="hs-identifier">FormatChar</span></a></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-86"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.Parser.html#SChar"><span class="hs-identifier">SChar</span></a></span><span>
+</span><span id="line-87"></span><span>  </span><span class="annot"><span class="hs-comment">-- * Guarded polyarity</span></span><span>
+</span><span id="line-88"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.html#pprintf"><span class="hs-identifier">pprintf</span></a></span><span>
+</span><span id="line-89"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.html#pprintf_"><span class="hs-identifier">pprintf_</span></a></span><span>
+</span><span id="line-90"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.html#PP"><span class="hs-identifier">PP</span></a></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-91"></span><span>  </span><span class="annot"><span class="hs-comment">-- * List-based polyarity</span></span><span>
+</span><span id="line-92"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.html#rprintf"><span class="hs-identifier">rprintf</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.html#rprintf_"><span class="hs-identifier">rprintf_</span></a></span><span>
+</span><span id="line-93"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">Rec</span></span><span class="hs-special">(</span><span class="annot"><a href="GHC.TypeLits.Printf.html#%3A%25"><span class="hs-operator">(:%)</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">RNil</span></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.html#FormatArgs"><span class="hs-identifier">FormatArgs</span></a></span><span>
+</span><span id="line-94"></span><span>  </span><span class="annot"><span class="hs-comment">-- * Unguarded polyarity</span></span><span>
+</span><span id="line-95"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.html#printf"><span class="hs-identifier">printf</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.html#printf_"><span class="hs-identifier">printf_</span></a></span><span>
+</span><span id="line-96"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.html#FormatFun"><span class="hs-identifier">FormatFun</span></a></span><span>
+</span><span id="line-97"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-98"></span><span>
+</span><span id="line-99"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Proxy</span></span><span>
+</span><span id="line-100"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Vinyl</span></span><span>
+</span><span id="line-101"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Vinyl.Curry</span></span><span>
+</span><span id="line-102"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.html"><span class="hs-identifier">GHC.TypeLits.Printf.Internal</span></a></span><span>
+</span><span id="line-103"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="GHC.TypeLits.Printf.Parse.html"><span class="hs-identifier">GHC.TypeLits.Printf.Parse</span></a></span><span>
+</span><span id="line-104"></span><span>
+</span><span id="line-105"></span><span class="hs-comment">-- | Type-safe printf with faked polyarity.  Pass in a &quot;list&quot; of arguments</span><span>
+</span><span id="line-106"></span><span class="hs-comment">-- (using ':%' and 'RNil'), instead of as multiple arguments.  Call it like</span><span>
+</span><span id="line-107"></span><span class="hs-comment">-- @'rprintf' \@&quot;you have %.02f dollars, %s&quot;@.</span><span>
 </span><span id="line-108"></span><span class="hs-comment">--</span><span>
-</span><span id="line-109"></span><span class="hs-comment">-- This means that it is expecting something that can be printed with @f@</span><span>
-</span><span id="line-110"></span><span class="hs-comment">-- and something that can be printed with @s@.  We can provide a 'Double'</span><span>
-</span><span id="line-111"></span><span class="hs-comment">-- and a 'String':</span><span>
-</span><span id="line-112"></span><span class="hs-comment">--</span><span>
-</span><span id="line-113"></span><span class="hs-comment">-- &gt;&gt;&gt; putStrLn $ rprintf @&quot;You have %.2f dollars, %s&quot; (3.62 ':%' &quot;Luigi&quot; :% 'RNil')</span><span>
-</span><span id="line-114"></span><span class="hs-comment">-- You have 3.62 dollars, Luigi</span><span>
+</span><span id="line-109"></span><span class="hs-comment">-- &gt;&gt;&gt; :t rprintf @&quot;You have %.2f dollars, %s&quot;</span><span>
+</span><span id="line-110"></span><span class="hs-comment">-- FormatArgs '[&quot;f&quot;, &quot;s&quot;] -&gt; String</span><span>
+</span><span id="line-111"></span><span class="hs-comment">--</span><span>
+</span><span id="line-112"></span><span class="hs-comment">-- This means that it is expecting something that can be printed with @f@</span><span>
+</span><span id="line-113"></span><span class="hs-comment">-- and something that can be printed with @s@.  We can provide a 'Double'</span><span>
+</span><span id="line-114"></span><span class="hs-comment">-- and a 'String':</span><span>
 </span><span id="line-115"></span><span class="hs-comment">--</span><span>
-</span><span id="line-116"></span><span class="hs-comment">-- See 'pprintf' for a version with true polyarity and good clear types,</span><span>
-</span><span id="line-117"></span><span class="hs-comment">-- but requires wrapping its arguments, and 'printf' for a version with</span><span>
-</span><span id="line-118"></span><span class="hs-comment">-- true polyarity but less clear types.  Also see top-level module</span><span>
-</span><span id="line-119"></span><span class="hs-comment">-- documentation  &quot;GHC.TypeLits.Printf&quot; for a more comprehensive summary.</span><span>
-</span><span id="line-120"></span><span class="annot"><a href="GHC.TypeLits.Printf.html#rprintf"><span class="hs-identifier hs-type">rprintf</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-keyword">forall</span><span> </span><span id="local-6989586621679084977"><span class="annot"><a href="#local-6989586621679084977"><span class="hs-identifier hs-type">str</span></a></span></span><span> </span><span id="local-6989586621679084976"><span class="annot"><a href="#local-6989586621679084976"><span class="hs-identifier hs-type">ps</span></a></span></span><span class="hs-operator">.</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.html#RPrintf"><span class="hs-identifier hs-type">RPrintf</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679084977"><span class="hs-identifier hs-type">str</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679084976"><span class="hs-identifier hs-type">ps</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.html#FormatArgs"><span class="hs-identifier hs-type">FormatArgs</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679084976"><span class="hs-identifier hs-type">ps</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
-</span><span id="line-121"></span><span id="rprintf"><span class="annot"><span class="annottext">rprintf :: FormatArgs ps -&gt; String
+</span><span id="line-116"></span><span class="hs-comment">-- &gt;&gt;&gt; putStrLn $ rprintf @&quot;You have %.2f dollars, %s&quot; (3.62 ':%' &quot;Luigi&quot; :% 'RNil')</span><span>
+</span><span id="line-117"></span><span class="hs-comment">-- You have 3.62 dollars, Luigi</span><span>
+</span><span id="line-118"></span><span class="hs-comment">--</span><span>
+</span><span id="line-119"></span><span class="hs-comment">-- See 'pprintf' for a version with true polyarity and good clear types,</span><span>
+</span><span id="line-120"></span><span class="hs-comment">-- but requires wrapping its arguments, and 'printf' for a version with</span><span>
+</span><span id="line-121"></span><span class="hs-comment">-- true polyarity but less clear types.  Also see top-level module</span><span>
+</span><span id="line-122"></span><span class="hs-comment">-- documentation  &quot;GHC.TypeLits.Printf&quot; for a more comprehensive summary.</span><span>
+</span><span id="line-123"></span><span class="annot"><a href="GHC.TypeLits.Printf.html#rprintf"><span class="hs-identifier hs-type">rprintf</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-keyword">forall</span><span> </span><span id="local-6989586621679084977"><span class="annot"><a href="#local-6989586621679084977"><span class="hs-identifier hs-type">str</span></a></span></span><span> </span><span id="local-6989586621679084976"><span class="annot"><a href="#local-6989586621679084976"><span class="hs-identifier hs-type">ps</span></a></span></span><span class="hs-operator">.</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.html#RPrintf"><span class="hs-identifier hs-type">RPrintf</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679084977"><span class="hs-identifier hs-type">str</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679084976"><span class="hs-identifier hs-type">ps</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.html#FormatArgs"><span class="hs-identifier hs-type">FormatArgs</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679084976"><span class="hs-identifier hs-type">ps</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-124"></span><span id="rprintf"><span class="annot"><span class="annottext">rprintf :: FormatArgs ps -&gt; String
 </span><a href="GHC.TypeLits.Printf.html#rprintf"><span class="hs-identifier hs-var hs-var">rprintf</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Proxy str -&gt; FormatArgs ps -&gt; String
 forall (str :: Symbol) (ps :: [Symbol]) (p :: Symbol -&gt; *).
 RPrintf str ps =&gt;
@@ -126,37 +129,37 @@ p str -&gt; FormatArgs ps -&gt; String
 </span><a href="GHC.TypeLits.Printf.Internal.html#rprintf_"><span class="hs-identifier hs-var">rprintf_</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Proxy str
 forall k (t :: k). Proxy t
 </span><span class="hs-identifier hs-var">Proxy</span></span><span> </span><span class="hs-glyph">@</span><span class="annot"><a href="#local-6989586621679084977"><span class="hs-identifier hs-type">str</span></a></span><span class="hs-special">)</span><span>
-</span><span id="line-122"></span><span>
-</span><span id="line-123"></span><span class="hs-comment">-- | Pattern and constructor allowing you to construct a 'FormatArgs'.</span><span>
-</span><span id="line-124"></span><span class="hs-comment">--</span><span>
-</span><span id="line-125"></span><span class="hs-comment">-- To construct a @'FormatArgs' '[&quot;f&quot;, &quot;s&quot;]@, for instance, you need to</span><span>
-</span><span id="line-126"></span><span class="hs-comment">-- give a value formattable by @f@ and a value formattable by @s@, given</span><span>
-</span><span id="line-127"></span><span class="hs-comment">-- like a linked list, with ':%' for cons and 'RNil' for nil.</span><span>
-</span><span id="line-128"></span><span class="hs-comment">--</span><span>
-</span><span id="line-129"></span><span class="hs-comment">-- @</span><span>
-</span><span id="line-130"></span><span class="hs-comment">-- 3.62 ':%' &quot;Luigi&quot; :% 'RNil'</span><span>
-</span><span id="line-131"></span><span class="hs-comment">-- @</span><span>
-</span><span id="line-132"></span><span class="hs-comment">--</span><span>
-</span><span id="line-133"></span><span class="hs-comment">-- (This should evoke the idea of of @3.62 : &quot;Luigi&quot; : []@, even though the</span><span>
-</span><span id="line-134"></span><span class="hs-comment">-- latter is not possible in Haskell)</span><span>
-</span><span id="line-135"></span><span id="local-6989586621679085015"><span id="local-6989586621679085016"><span id="local-6989586621679085017"><span class="hs-keyword">pattern</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.html#%3A%25"><span class="hs-operator hs-type">(:%)</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.html#FormatChar"><span class="hs-identifier hs-type">FormatChar</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679085017"><span class="hs-identifier hs-type">c</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679085015"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679085015"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.html#FormatArgs"><span class="hs-identifier hs-type">FormatArgs</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679085016"><span class="hs-identifier hs-type">cs</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.html#FormatArgs"><span class="hs-identifier hs-type">FormatArgs</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679085017"><span class="hs-identifier hs-type">c</span></a></span><span> </span><span class="hs-special">'</span><span class="hs-glyph">:</span><span> </span><span class="annot"><a href="#local-6989586621679085016"><span class="hs-identifier hs-type">cs</span></a></span><span class="hs-special">)</span></span></span></span><span>
-</span><span id="line-136"></span><span class="hs-keyword">pattern</span><span> </span><span class="annot"><a href="#local-6989586621679084974"><span class="hs-identifier hs-type">x</span></a></span><span> </span><span id="%24b%3A%25"><span id="%24m%3A%25"><span id="%3A%25"><span class="annot"><span class="annottext">$b:% :: a -&gt; FormatArgs cs -&gt; FormatArgs (c : cs)
+</span><span id="line-125"></span><span>
+</span><span id="line-126"></span><span class="hs-comment">-- | Pattern and constructor allowing you to construct a 'FormatArgs'.</span><span>
+</span><span id="line-127"></span><span class="hs-comment">--</span><span>
+</span><span id="line-128"></span><span class="hs-comment">-- To construct a @'FormatArgs' '[&quot;f&quot;, &quot;s&quot;]@, for instance, you need to</span><span>
+</span><span id="line-129"></span><span class="hs-comment">-- give a value formattable by @f@ and a value formattable by @s@, given</span><span>
+</span><span id="line-130"></span><span class="hs-comment">-- like a linked list, with ':%' for cons and 'RNil' for nil.</span><span>
+</span><span id="line-131"></span><span class="hs-comment">--</span><span>
+</span><span id="line-132"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-133"></span><span class="hs-comment">-- 3.62 ':%' &quot;Luigi&quot; :% 'RNil'</span><span>
+</span><span id="line-134"></span><span class="hs-comment">-- @</span><span>
+</span><span id="line-135"></span><span class="hs-comment">--</span><span>
+</span><span id="line-136"></span><span class="hs-comment">-- (This should evoke the idea of of @3.62 : &quot;Luigi&quot; : []@, even though the</span><span>
+</span><span id="line-137"></span><span class="hs-comment">-- latter is not possible in Haskell)</span><span>
+</span><span id="line-138"></span><span id="local-6989586621679085015"><span id="local-6989586621679085016"><span id="local-6989586621679085017"><span class="hs-keyword">pattern</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.html#%3A%25"><span class="hs-operator hs-type">(:%)</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.html#FormatChar"><span class="hs-identifier hs-type">FormatChar</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679085017"><span class="hs-identifier hs-type">c</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679085015"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679085015"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.html#FormatArgs"><span class="hs-identifier hs-type">FormatArgs</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679085016"><span class="hs-identifier hs-type">cs</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.html#FormatArgs"><span class="hs-identifier hs-type">FormatArgs</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679085017"><span class="hs-identifier hs-type">c</span></a></span><span> </span><span class="hs-special">'</span><span class="hs-glyph">:</span><span> </span><span class="annot"><a href="#local-6989586621679085016"><span class="hs-identifier hs-type">cs</span></a></span><span class="hs-special">)</span></span></span></span><span>
+</span><span id="line-139"></span><span class="hs-keyword">pattern</span><span> </span><span class="annot"><a href="#local-6989586621679084974"><span class="hs-identifier hs-type">x</span></a></span><span> </span><span id="%24b%3A%25"><span id="%24m%3A%25"><span id="%3A%25"><span class="annot"><span class="annottext">$b:% :: a -&gt; FormatArgs cs -&gt; FormatArgs (c : cs)
 $m:% :: forall r (c :: Symbol) (cs :: [Symbol]).
 FormatArgs (c : cs)
 -&gt; (forall a. FormatChar c a =&gt; a -&gt; FormatArgs cs -&gt; r)
 -&gt; (Void# -&gt; r)
 -&gt; r
 </span><a href="GHC.TypeLits.Printf.html#%24b%3A%25"><span class="hs-operator hs-var hs-var hs-var">:%</span></a></span></span></span></span><span> </span><span class="annot"><a href="#local-6989586621679084971"><span class="hs-identifier hs-type">xs</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.html#PP"><span class="hs-identifier hs-type">PP</span></a></span><span> </span><span id="local-6989586621679084974"><span class="annot"><a href="#local-6989586621679084974"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="annot"><span class="hs-operator hs-type">:&amp;</span></span><span> </span><span id="local-6989586621679084971"><span class="annot"><a href="#local-6989586621679084971"><span class="hs-identifier hs-var">xs</span></a></span></span><span>
-</span><span id="line-137"></span><span class="hs-keyword">infixr</span><span> </span><span class="hs-number">7</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.html#%3A%25"><span class="hs-operator hs-type">:%</span></a></span><span>
-</span><span id="line-138"></span><span class="hs-pragma">{-# COMPLETE</span><span> </span><span class="hs-pragma">(</span><span class="hs-pragma">:%</span><span class="hs-pragma">)</span><span> </span><span class="hs-pragma">#-}</span><span>
-</span><span id="line-139"></span><span>
-</span><span id="line-140"></span><span class="hs-comment">-- | A version of 'pprintf' taking an explicit proxy, which allows usage</span><span>
-</span><span id="line-141"></span><span class="hs-comment">-- without /TypeApplications/</span><span>
-</span><span id="line-142"></span><span class="hs-comment">--</span><span>
-</span><span id="line-143"></span><span class="hs-comment">-- &gt;&gt;&gt; :t pprintf_ (Proxy :: Proxy &quot;You have %.2f dollars, %s&quot;)</span><span>
-</span><span id="line-144"></span><span class="hs-comment">-- PP &quot;f&quot; -&gt; PP &quot;s&quot; -&gt; String</span><span>
-</span><span id="line-145"></span><span class="annot"><a href="GHC.TypeLits.Printf.html#pprintf_"><span class="hs-identifier hs-type">pprintf_</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-keyword">forall</span><span> </span><span id="local-6989586621679084996"><span class="annot"><a href="#local-6989586621679084996"><span class="hs-identifier hs-type">str</span></a></span></span><span> </span><span id="local-6989586621679084995"><span class="annot"><a href="#local-6989586621679084995"><span class="hs-identifier hs-type">ps</span></a></span></span><span> </span><span id="local-6989586621679084994"><span class="annot"><a href="#local-6989586621679084994"><span class="hs-identifier hs-type">p</span></a></span></span><span class="hs-operator">.</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.html#RPrintf"><span class="hs-identifier hs-type">RPrintf</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679084996"><span class="hs-identifier hs-type">str</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679084995"><span class="hs-identifier hs-type">ps</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">RecordCurry</span></span><span> </span><span class="annot"><a href="#local-6989586621679084995"><span class="hs-identifier hs-type">ps</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679084994"><span class="hs-identifier hs-type">p</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679084996"><span class="hs-identifier hs-type">str</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">CurriedF</span></span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.html#PP"><span class="hs-identifier hs-type">PP</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679084995"><span class="hs-identifier hs-type">ps</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
-</span><span id="line-146"></span><span id="pprintf_"><span class="annot"><span class="annottext">pprintf_ :: p str -&gt; CurriedF PP ps String
+</span><span id="line-140"></span><span class="hs-keyword">infixr</span><span> </span><span class="hs-number">7</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.html#%3A%25"><span class="hs-operator hs-type">:%</span></a></span><span>
+</span><span id="line-141"></span><span class="hs-pragma">{-# COMPLETE</span><span> </span><span class="hs-pragma">(</span><span class="hs-pragma">:%</span><span class="hs-pragma">)</span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-142"></span><span>
+</span><span id="line-143"></span><span class="hs-comment">-- | A version of 'pprintf' taking an explicit proxy, which allows usage</span><span>
+</span><span id="line-144"></span><span class="hs-comment">-- without /TypeApplications/</span><span>
+</span><span id="line-145"></span><span class="hs-comment">--</span><span>
+</span><span id="line-146"></span><span class="hs-comment">-- &gt;&gt;&gt; :t pprintf_ (Proxy :: Proxy &quot;You have %.2f dollars, %s&quot;)</span><span>
+</span><span id="line-147"></span><span class="hs-comment">-- PP &quot;f&quot; -&gt; PP &quot;s&quot; -&gt; String</span><span>
+</span><span id="line-148"></span><span class="annot"><a href="GHC.TypeLits.Printf.html#pprintf_"><span class="hs-identifier hs-type">pprintf_</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-keyword">forall</span><span> </span><span id="local-6989586621679084996"><span class="annot"><a href="#local-6989586621679084996"><span class="hs-identifier hs-type">str</span></a></span></span><span> </span><span id="local-6989586621679084995"><span class="annot"><a href="#local-6989586621679084995"><span class="hs-identifier hs-type">ps</span></a></span></span><span> </span><span id="local-6989586621679084994"><span class="annot"><a href="#local-6989586621679084994"><span class="hs-identifier hs-type">p</span></a></span></span><span class="hs-operator">.</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.html#RPrintf"><span class="hs-identifier hs-type">RPrintf</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679084996"><span class="hs-identifier hs-type">str</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679084995"><span class="hs-identifier hs-type">ps</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">RecordCurry</span></span><span> </span><span class="annot"><a href="#local-6989586621679084995"><span class="hs-identifier hs-type">ps</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679084994"><span class="hs-identifier hs-type">p</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679084996"><span class="hs-identifier hs-type">str</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">CurriedF</span></span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.html#PP"><span class="hs-identifier hs-type">PP</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679084995"><span class="hs-identifier hs-type">ps</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-149"></span><span id="pprintf_"><span class="annot"><span class="annottext">pprintf_ :: p str -&gt; CurriedF PP ps String
 </span><a href="GHC.TypeLits.Printf.html#pprintf_"><span class="hs-identifier hs-var hs-var">pprintf_</span></a></span></span><span> </span><span id="local-6989586621679084968"><span class="annot"><span class="annottext">p :: p str
 </span><a href="#local-6989586621679084968"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Rec PP ps -&gt; String) -&gt; CurriedF PP ps String
 forall u (ts :: [u]) (f :: u -&gt; *) a.
@@ -168,33 +171,33 @@ RPrintf str ps =&gt;
 p str -&gt; FormatArgs ps -&gt; String
 </span><a href="GHC.TypeLits.Printf.Internal.html#rprintf_"><span class="hs-identifier hs-var">rprintf_</span></a></span><span> </span><span class="annot"><span class="annottext">p str
 </span><a href="#local-6989586621679084968"><span class="hs-identifier hs-var">p</span></a></span><span class="hs-special">)</span><span>
-</span><span id="line-147"></span><span>
-</span><span id="line-148"></span><span class="hs-comment">-- | Type-safe printf with true guarded polyarity.  Call it like @'pprintf'</span><span>
-</span><span id="line-149"></span><span class="hs-comment">-- \@&quot;you have %.02f dollars, %s&quot;@.</span><span>
-</span><span id="line-150"></span><span class="hs-comment">--</span><span>
-</span><span id="line-151"></span><span class="hs-comment">-- A call to printf on a valid string will /always/ give a well-defined</span><span>
-</span><span id="line-152"></span><span class="hs-comment">-- type for a function in return:</span><span>
+</span><span id="line-150"></span><span>
+</span><span id="line-151"></span><span class="hs-comment">-- | Type-safe printf with true guarded polyarity.  Call it like @'pprintf'</span><span>
+</span><span id="line-152"></span><span class="hs-comment">-- \@&quot;you have %.02f dollars, %s&quot;@.</span><span>
 </span><span id="line-153"></span><span class="hs-comment">--</span><span>
-</span><span id="line-154"></span><span class="hs-comment">-- &gt;&gt;&gt; :t pprintf @&quot;You have %.2f dollars, %s&quot;</span><span>
-</span><span id="line-155"></span><span class="hs-comment">-- PP &quot;f&quot; -&gt; PP &quot;s&quot; -&gt; String</span><span>
+</span><span id="line-154"></span><span class="hs-comment">-- A call to printf on a valid string will /always/ give a well-defined</span><span>
+</span><span id="line-155"></span><span class="hs-comment">-- type for a function in return:</span><span>
 </span><span id="line-156"></span><span class="hs-comment">--</span><span>
-</span><span id="line-157"></span><span class="hs-comment">-- You can always query the type, and get a well-defined type back, which</span><span>
-</span><span id="line-158"></span><span class="hs-comment">-- you can utilize using typed holes or other type-guided development</span><span>
-</span><span id="line-159"></span><span class="hs-comment">-- techniques.</span><span>
-</span><span id="line-160"></span><span class="hs-comment">--</span><span>
-</span><span id="line-161"></span><span class="hs-comment">-- To give 'pprintf' its arguments, however, they must be wrapped in 'PP':</span><span>
-</span><span id="line-162"></span><span class="hs-comment">--</span><span>
-</span><span id="line-163"></span><span class="hs-comment">-- &gt;&gt;&gt; putStrLn $ pprintf @&quot;You have %.2f dollars, %s&quot; (PP 3.62) (PP &quot;Luigi&quot;)</span><span>
-</span><span id="line-164"></span><span class="hs-comment">-- You have 3.62 dollars, Luigi</span><span>
+</span><span id="line-157"></span><span class="hs-comment">-- &gt;&gt;&gt; :t pprintf @&quot;You have %.2f dollars, %s&quot;</span><span>
+</span><span id="line-158"></span><span class="hs-comment">-- PP &quot;f&quot; -&gt; PP &quot;s&quot; -&gt; String</span><span>
+</span><span id="line-159"></span><span class="hs-comment">--</span><span>
+</span><span id="line-160"></span><span class="hs-comment">-- You can always query the type, and get a well-defined type back, which</span><span>
+</span><span id="line-161"></span><span class="hs-comment">-- you can utilize using typed holes or other type-guided development</span><span>
+</span><span id="line-162"></span><span class="hs-comment">-- techniques.</span><span>
+</span><span id="line-163"></span><span class="hs-comment">--</span><span>
+</span><span id="line-164"></span><span class="hs-comment">-- To give 'pprintf' its arguments, however, they must be wrapped in 'PP':</span><span>
 </span><span id="line-165"></span><span class="hs-comment">--</span><span>
-</span><span id="line-166"></span><span class="hs-comment">-- See 'printf' for a polyariadic method that doesn't require 'PP' on its</span><span>
-</span><span id="line-167"></span><span class="hs-comment">-- inputs, but doesn't have as usable a type when queried before supplying</span><span>
-</span><span id="line-168"></span><span class="hs-comment">-- its arguments, and 'rprintf' for a fake-polyariadic method that doesn't</span><span>
-</span><span id="line-169"></span><span class="hs-comment">-- require 'PP', but requires arguments in a single list instead. Also see</span><span>
-</span><span id="line-170"></span><span class="hs-comment">-- top-level module documentation  &quot;GHC.TypeLits.Printf&quot; for a more</span><span>
-</span><span id="line-171"></span><span class="hs-comment">-- comprehensive summary.</span><span>
-</span><span id="line-172"></span><span class="annot"><a href="GHC.TypeLits.Printf.html#pprintf"><span class="hs-identifier hs-type">pprintf</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-keyword">forall</span><span> </span><span id="local-6989586621679084966"><span class="annot"><a href="#local-6989586621679084966"><span class="hs-identifier hs-type">str</span></a></span></span><span> </span><span id="local-6989586621679084965"><span class="annot"><a href="#local-6989586621679084965"><span class="hs-identifier hs-type">ps</span></a></span></span><span class="hs-operator">.</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.html#RPrintf"><span class="hs-identifier hs-type">RPrintf</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679084966"><span class="hs-identifier hs-type">str</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679084965"><span class="hs-identifier hs-type">ps</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">RecordCurry</span></span><span> </span><span class="annot"><a href="#local-6989586621679084965"><span class="hs-identifier hs-type">ps</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">CurriedF</span></span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.html#PP"><span class="hs-identifier hs-type">PP</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679084965"><span class="hs-identifier hs-type">ps</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
-</span><span id="line-173"></span><span id="pprintf"><span class="annot"><span class="annottext">pprintf :: CurriedF PP ps String
+</span><span id="line-166"></span><span class="hs-comment">-- &gt;&gt;&gt; putStrLn $ pprintf @&quot;You have %.2f dollars, %s&quot; (PP 3.62) (PP &quot;Luigi&quot;)</span><span>
+</span><span id="line-167"></span><span class="hs-comment">-- You have 3.62 dollars, Luigi</span><span>
+</span><span id="line-168"></span><span class="hs-comment">--</span><span>
+</span><span id="line-169"></span><span class="hs-comment">-- See 'printf' for a polyariadic method that doesn't require 'PP' on its</span><span>
+</span><span id="line-170"></span><span class="hs-comment">-- inputs, but doesn't have as usable a type when queried before supplying</span><span>
+</span><span id="line-171"></span><span class="hs-comment">-- its arguments, and 'rprintf' for a fake-polyariadic method that doesn't</span><span>
+</span><span id="line-172"></span><span class="hs-comment">-- require 'PP', but requires arguments in a single list instead. Also see</span><span>
+</span><span id="line-173"></span><span class="hs-comment">-- top-level module documentation  &quot;GHC.TypeLits.Printf&quot; for a more</span><span>
+</span><span id="line-174"></span><span class="hs-comment">-- comprehensive summary.</span><span>
+</span><span id="line-175"></span><span class="annot"><a href="GHC.TypeLits.Printf.html#pprintf"><span class="hs-identifier hs-type">pprintf</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-keyword">forall</span><span> </span><span id="local-6989586621679084966"><span class="annot"><a href="#local-6989586621679084966"><span class="hs-identifier hs-type">str</span></a></span></span><span> </span><span id="local-6989586621679084965"><span class="annot"><a href="#local-6989586621679084965"><span class="hs-identifier hs-type">ps</span></a></span></span><span class="hs-operator">.</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.html#RPrintf"><span class="hs-identifier hs-type">RPrintf</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679084966"><span class="hs-identifier hs-type">str</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679084965"><span class="hs-identifier hs-type">ps</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">RecordCurry</span></span><span> </span><span class="annot"><a href="#local-6989586621679084965"><span class="hs-identifier hs-type">ps</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">CurriedF</span></span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.html#PP"><span class="hs-identifier hs-type">PP</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679084965"><span class="hs-identifier hs-type">ps</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-176"></span><span id="pprintf"><span class="annot"><span class="annottext">pprintf :: CurriedF PP ps String
 </span><a href="GHC.TypeLits.Printf.html#pprintf"><span class="hs-identifier hs-var hs-var">pprintf</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Proxy str -&gt; CurriedF PP ps String
 forall (str :: Symbol) (ps :: [Symbol]) (p :: Symbol -&gt; *).
 (RPrintf str ps, RecordCurry ps) =&gt;
@@ -202,48 +205,48 @@ p str -&gt; CurriedF PP ps String
 </span><a href="GHC.TypeLits.Printf.html#pprintf_"><span class="hs-identifier hs-var">pprintf_</span></a></span><span> </span><span class="hs-glyph">@</span><span class="annot"><a href="#local-6989586621679084966"><span class="hs-identifier hs-type">str</span></a></span><span> </span><span class="hs-glyph">@</span><span class="annot"><a href="#local-6989586621679084965"><span class="hs-identifier hs-type">ps</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Proxy str
 forall k (t :: k). Proxy t
 </span><span class="hs-identifier hs-var">Proxy</span></span><span> </span><span class="hs-glyph">@</span><span class="annot"><a href="#local-6989586621679084966"><span class="hs-identifier hs-type">str</span></a></span><span class="hs-special">)</span><span>
-</span><span id="line-174"></span><span>
-</span><span id="line-175"></span><span class="hs-comment">-- | Type-safe printf with true naked polyarity.  Call it like @'printf'</span><span>
-</span><span id="line-176"></span><span class="hs-comment">-- \@&quot;you have %.02f dollars, %s&quot;@.</span><span>
-</span><span id="line-177"></span><span class="hs-comment">--</span><span>
-</span><span id="line-178"></span><span class="hs-comment">-- &gt;&gt;&gt; putStrLn $ printf @&quot;You have %.2f dollars, %s&quot; 3.62 &quot;Luigi&quot;</span><span>
-</span><span id="line-179"></span><span class="hs-comment">-- You have 3.62 dollars, Luigi</span><span>
+</span><span id="line-177"></span><span>
+</span><span id="line-178"></span><span class="hs-comment">-- | Type-safe printf with true naked polyarity.  Call it like @'printf'</span><span>
+</span><span id="line-179"></span><span class="hs-comment">-- \@&quot;you have %.02f dollars, %s&quot;@.</span><span>
 </span><span id="line-180"></span><span class="hs-comment">--</span><span>
-</span><span id="line-181"></span><span class="hs-comment">-- If you what the type of this function unapplied (or with not enough</span><span>
-</span><span id="line-182"></span><span class="hs-comment">-- arguments), or try to use it with typed holes or type-guided</span><span>
-</span><span id="line-183"></span><span class="hs-comment">-- development, the type errors aren't going to be pretty in most</span><span>
-</span><span id="line-184"></span><span class="hs-comment">-- situations.  In addition, you always have to make sure the result type</span><span>
-</span><span id="line-185"></span><span class="hs-comment">-- can be inferred as 'String', which may require a type annotation in some</span><span>
-</span><span id="line-186"></span><span class="hs-comment">-- situations.</span><span>
-</span><span id="line-187"></span><span class="hs-comment">--</span><span>
-</span><span id="line-188"></span><span class="hs-comment">-- (Measures have been taken to make the error messages as helpful as</span><span>
-</span><span id="line-189"></span><span class="hs-comment">-- possible, but they're not going to be as pretty as for 'pprintf' or</span><span>
-</span><span id="line-190"></span><span class="hs-comment">-- 'rprintf'.  See 'FormatFun' documentation for ways to get some limited</span><span>
-</span><span id="line-191"></span><span class="hs-comment">-- type feedback from this function.)</span><span>
-</span><span id="line-192"></span><span class="hs-comment">--</span><span>
-</span><span id="line-193"></span><span class="hs-comment">-- Essentially, this is easier to use if you have all the right arguments</span><span>
-</span><span id="line-194"></span><span class="hs-comment">-- in place...but more difficult to debug (at compiletime) if you mess up.</span><span>
+</span><span id="line-181"></span><span class="hs-comment">-- &gt;&gt;&gt; putStrLn $ printf @&quot;You have %.2f dollars, %s&quot; 3.62 &quot;Luigi&quot;</span><span>
+</span><span id="line-182"></span><span class="hs-comment">-- You have 3.62 dollars, Luigi</span><span>
+</span><span id="line-183"></span><span class="hs-comment">--</span><span>
+</span><span id="line-184"></span><span class="hs-comment">-- If you what the type of this function unapplied (or with not enough</span><span>
+</span><span id="line-185"></span><span class="hs-comment">-- arguments), or try to use it with typed holes or type-guided</span><span>
+</span><span id="line-186"></span><span class="hs-comment">-- development, the type errors aren't going to be pretty in most</span><span>
+</span><span id="line-187"></span><span class="hs-comment">-- situations.  In addition, you always have to make sure the result type</span><span>
+</span><span id="line-188"></span><span class="hs-comment">-- can be inferred as 'String', which may require a type annotation in some</span><span>
+</span><span id="line-189"></span><span class="hs-comment">-- situations.</span><span>
+</span><span id="line-190"></span><span class="hs-comment">--</span><span>
+</span><span id="line-191"></span><span class="hs-comment">-- (Measures have been taken to make the error messages as helpful as</span><span>
+</span><span id="line-192"></span><span class="hs-comment">-- possible, but they're not going to be as pretty as for 'pprintf' or</span><span>
+</span><span id="line-193"></span><span class="hs-comment">-- 'rprintf'.  See 'FormatFun' documentation for ways to get some limited</span><span>
+</span><span id="line-194"></span><span class="hs-comment">-- type feedback from this function.)</span><span>
 </span><span id="line-195"></span><span class="hs-comment">--</span><span>
-</span><span id="line-196"></span><span class="hs-comment">-- Some guidelines for making sure the type-checking and debugging story</span><span>
-</span><span id="line-197"></span><span class="hs-comment">-- goes as nicely as possible:</span><span>
+</span><span id="line-196"></span><span class="hs-comment">-- Essentially, this is easier to use if you have all the right arguments</span><span>
+</span><span id="line-197"></span><span class="hs-comment">-- in place...but more difficult to debug (at compiletime) if you mess up.</span><span>
 </span><span id="line-198"></span><span class="hs-comment">--</span><span>
-</span><span id="line-199"></span><span class="hs-comment">-- * Make sure the result type is always known monomorphically.  Sometimes</span><span>
-</span><span id="line-200"></span><span class="hs-comment">--   this means requiring an explicit annotation, like @printf ... ::</span><span>
-</span><span id="line-201"></span><span class="hs-comment">--   String@.</span><span>
-</span><span id="line-202"></span><span class="hs-comment">-- * Make sure all the values you give to this have known monomorphic</span><span>
-</span><span id="line-203"></span><span class="hs-comment">--   types, as well.</span><span>
-</span><span id="line-204"></span><span class="hs-comment">--</span><span>
-</span><span id="line-205"></span><span class="hs-comment">-- /However/, all debugging should still be only at compile-time.  Once it</span><span>
-</span><span id="line-206"></span><span class="hs-comment">-- compiles, it's safe --- code with missing or badly typed arguments will</span><span>
-</span><span id="line-207"></span><span class="hs-comment">-- not compile, and so won't give you any runtime errors.</span><span>
-</span><span id="line-208"></span><span class="hs-comment">--</span><span>
-</span><span id="line-209"></span><span class="hs-comment">-- See 'pprintf' for a version of this with much nicer types and type</span><span>
-</span><span id="line-210"></span><span class="hs-comment">-- errors, but requires wrapping arguments, and 'rprintf' for a version of</span><span>
-</span><span id="line-211"></span><span class="hs-comment">-- this with &quot;fake&quot; polyarity, taking a list as input instead. Also see</span><span>
-</span><span id="line-212"></span><span class="hs-comment">-- top-level module documentation  &quot;GHC.TypeLits.Printf&quot; for a more</span><span>
-</span><span id="line-213"></span><span class="hs-comment">-- comprehensive summary.</span><span>
-</span><span id="line-214"></span><span class="annot"><a href="GHC.TypeLits.Printf.html#printf"><span class="hs-identifier hs-type">printf</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-keyword">forall</span><span> </span><span id="local-6989586621679084964"><span class="annot"><a href="#local-6989586621679084964"><span class="hs-identifier hs-type">str</span></a></span></span><span> </span><span id="local-6989586621679084963"><span class="annot"><a href="#local-6989586621679084963"><span class="hs-identifier hs-type">fun</span></a></span></span><span class="hs-operator">.</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.html#Printf"><span class="hs-identifier hs-type">Printf</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679084964"><span class="hs-identifier hs-type">str</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679084963"><span class="hs-identifier hs-type">fun</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679084963"><span class="hs-identifier hs-type">fun</span></a></span><span>
-</span><span id="line-215"></span><span id="printf"><span class="annot"><span class="annottext">printf :: fun
+</span><span id="line-199"></span><span class="hs-comment">-- Some guidelines for making sure the type-checking and debugging story</span><span>
+</span><span id="line-200"></span><span class="hs-comment">-- goes as nicely as possible:</span><span>
+</span><span id="line-201"></span><span class="hs-comment">--</span><span>
+</span><span id="line-202"></span><span class="hs-comment">-- * Make sure the result type is always known monomorphically.  Sometimes</span><span>
+</span><span id="line-203"></span><span class="hs-comment">--   this means requiring an explicit annotation, like @printf ... ::</span><span>
+</span><span id="line-204"></span><span class="hs-comment">--   String@.</span><span>
+</span><span id="line-205"></span><span class="hs-comment">-- * Make sure all the values you give to this have known monomorphic</span><span>
+</span><span id="line-206"></span><span class="hs-comment">--   types, as well.</span><span>
+</span><span id="line-207"></span><span class="hs-comment">--</span><span>
+</span><span id="line-208"></span><span class="hs-comment">-- /However/, all debugging should still be only at compile-time.  Once it</span><span>
+</span><span id="line-209"></span><span class="hs-comment">-- compiles, it's safe --- code with missing or badly typed arguments will</span><span>
+</span><span id="line-210"></span><span class="hs-comment">-- not compile, and so won't give you any runtime errors.</span><span>
+</span><span id="line-211"></span><span class="hs-comment">--</span><span>
+</span><span id="line-212"></span><span class="hs-comment">-- See 'pprintf' for a version of this with much nicer types and type</span><span>
+</span><span id="line-213"></span><span class="hs-comment">-- errors, but requires wrapping arguments, and 'rprintf' for a version of</span><span>
+</span><span id="line-214"></span><span class="hs-comment">-- this with &quot;fake&quot; polyarity, taking a list as input instead. Also see</span><span>
+</span><span id="line-215"></span><span class="hs-comment">-- top-level module documentation  &quot;GHC.TypeLits.Printf&quot; for a more</span><span>
+</span><span id="line-216"></span><span class="hs-comment">-- comprehensive summary.</span><span>
+</span><span id="line-217"></span><span class="annot"><a href="GHC.TypeLits.Printf.html#printf"><span class="hs-identifier hs-type">printf</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-keyword">forall</span><span> </span><span id="local-6989586621679084964"><span class="annot"><a href="#local-6989586621679084964"><span class="hs-identifier hs-type">str</span></a></span></span><span> </span><span id="local-6989586621679084963"><span class="annot"><a href="#local-6989586621679084963"><span class="hs-identifier hs-type">fun</span></a></span></span><span class="hs-operator">.</span><span> </span><span class="annot"><a href="GHC.TypeLits.Printf.Internal.html#Printf"><span class="hs-identifier hs-type">Printf</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679084964"><span class="hs-identifier hs-type">str</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679084963"><span class="hs-identifier hs-type">fun</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679084963"><span class="hs-identifier hs-type">fun</span></a></span><span>
+</span><span id="line-218"></span><span id="printf"><span class="annot"><span class="annottext">printf :: fun
 </span><a href="GHC.TypeLits.Printf.html#printf"><span class="hs-identifier hs-var hs-var">printf</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Proxy str -&gt; fun
 forall (str :: Symbol) fun (p :: Symbol -&gt; *).
 Printf str fun =&gt;
@@ -251,5 +254,5 @@ p str -&gt; fun
 </span><a href="GHC.TypeLits.Printf.Internal.html#printf_"><span class="hs-identifier hs-var">printf_</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Proxy str
 forall k (t :: k). Proxy t
 </span><span class="hs-identifier hs-var">Proxy</span></span><span> </span><span class="hs-glyph">@</span><span class="annot"><a href="#local-6989586621679084964"><span class="hs-identifier hs-type">str</span></a></span><span class="hs-special">)</span><span>
-</span><span id="line-216"></span><span>
-</span><span id="line-217"></span></pre></body></html>
+</span><span id="line-219"></span><span>
+</span><span id="line-220"></span></pre></body></html>
