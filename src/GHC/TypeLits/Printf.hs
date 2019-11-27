@@ -25,7 +25,7 @@
 -- Stability   : experimental
 -- Portability : non-portable
 --
--- "Type-safe printf", matching the semantics of 'P.printf' from
+-- An extensible and type-safe printf, matching the semantics of 'P.printf' from
 -- "Text.Printf" in /base/.  The difference is that the variants here will
 -- always fail to compile if given arguments of the wrong type (or too many
 -- or too little arguments).  Most of the variants also provide useful type
@@ -59,6 +59,9 @@
 -- "Data.Vinyl.Core"), where the first item implements @f@ and the second
 -- item implements @s@: @3.62 ':%' "Luigi" :% 'RNil'@ will do.
 --
+-- The following table summarizes the features and drawbacks of each
+-- method:
+--
 -- +-----------+------------------+--------------------+--------------------------+
 -- | Method    | True Polyarity   | Naked Arguments    | Type feedback            |
 -- +===========+==================+====================+==========================+
@@ -74,8 +77,8 @@
 -- welcome, however, if you find something that satisfies all three
 -- benefits while still allowing for polymorphism!
 --
--- You can provide instances for your own custom types by writing an
--- instance of 'FormatChar'.
+-- You can extend functionality with formatting for your own types by
+-- providing instances of @FormatChar@.
 
 module GHC.TypeLits.Printf (
   -- * Formattable things
