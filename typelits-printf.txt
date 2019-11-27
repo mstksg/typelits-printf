@@ -2,15 +2,16 @@
 -- See Hoogle, http://www.haskell.org/hoogle/
 
 
--- | Type-safe printf from parsing GHC Typelits
+-- | Type-safe printf from parsing GHC TypeLits Symbol
 --   
---   An extensible and type-safe printf, matching the semantics of
---   <a>P.printf</a> from <a>Text.Printf</a> in <i>base</i>. The difference
---   is that the variants here will always fail to compile if given
---   arguments of the wrong type (or too many or too little arguments).
---   Most of the variants also provide useful type feedback, telling you
---   the type of arguments it expects and how many when queried with
---   <tt>:t</tt> or with typed holes.
+--   An extensible and type-safe printf from parsing GHC TypeLits Symbol
+--   literals, matching the semantics of <a>P.printf</a> from
+--   <a>Text.Printf</a> in <i>base</i>. The difference is that the variants
+--   here will always fail to compile if given arguments of the wrong type
+--   (or too many or too little arguments). Most of the variants also
+--   provide useful type feedback, telling you the type of arguments it
+--   expects and how many when queried with <tt>:t</tt> or with typed
+--   holes.
 --   
 --   See README and documentation of <a>GHC.TypeLits.Printf</a> for more
 --   information
@@ -18,15 +19,16 @@
 @version 0.1.0.0
 
 
--- | An extensible and type-safe printf, matching the semantics of
---   <a>printf</a> from <a>Text.Printf</a> in <i>base</i>. The difference
---   is that the variants here will always fail to compile if given
---   arguments of the wrong type (or too many or too little arguments).
---   Most of the variants also provide useful type feedback, telling you
---   the type of arguments it expects and how many when queried with
---   <tt>:t</tt> or with typed holes. See documentation in
---   <a>Text.Printf</a> for details on how this formats items of various
---   types, and the differences with C <tt>printf(3)</tt>.
+-- | An extensible and type-safe printf from parsing GHC TypeLits Symbol
+--   literals, matching the semantics of <a>printf</a> from
+--   <a>Text.Printf</a> in <i>base</i>. The difference is that the variants
+--   here will always fail to compile if given arguments of the wrong type
+--   (or too many or too little arguments). Most of the variants also
+--   provide useful type feedback, telling you the type of arguments it
+--   expects and how many when queried with <tt>:t</tt> or with typed
+--   holes. See documentation in <a>Text.Printf</a> for details on how this
+--   formats items of various types, and the differences with C
+--   <tt>printf(3)</tt>.
 --   
 --   Comparing their usage/calling conventions:
 --   
