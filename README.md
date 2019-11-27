@@ -47,7 +47,7 @@ FormatFun '[ .... ] fun => fun
     `3.62 :% "Luigi" :% RNil` will do.
 *   The type of `printf` is much less informative.  It's possible to see what
     you need from the `...` in `FormatFun`...but it's basically a situation
-    that works fine when it doesn't, but can be tricky if you mess up.
+    that works fine when it does, but can be tricky if you mess up.
 
 The following table summarizes the features and drawbacks of each
 method:
