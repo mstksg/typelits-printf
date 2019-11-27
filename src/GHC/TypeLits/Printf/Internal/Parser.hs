@@ -13,7 +13,10 @@ import           GHC.TypeLits
 -- hello, we're going to attempt to implement
 -- https://docs.microsoft.com/en-us/cpp/c-runtime-library/format-specification-syntax-printf-and-wprintf-functions?view=vs-2019
 
--- | A type synonym for a single-character symbol
+-- | A type synonym for a single-character symbol.  Ideally this would just
+-- be 'Char', but we don't have chars at the type level.  So, if you see
+-- 'SChar' in a type signature, it means that it's expected to be
+-- a symbol/string with only one single character.
 type SChar = Symbol
 
 type Parser a = a -> Type

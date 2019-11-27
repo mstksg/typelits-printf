@@ -89,29 +89,36 @@
 -- benefits while still allowing for polymorphism!
 --
 -- You can extend functionality with formatting for your own types by
--- providing instances of @FormatChar@.
+-- providing instances of @FormatType@.
+--
+-- Also in this module is 'pfmt', which allows you to format individual
+-- items according to a single format specifier.
 
 module GHC.TypeLits.Printf (
   -- * Formattable things
-    FormatChar(..)
+    FormatType(..)
   , SChar
-  -- * Guarded polyarity
+  -- * Printf
+  -- ** Guarded polyarity
   , pprintf
   , pprintf_
   , PP(..)
-  -- * List-based polyarity
+  -- ** List-based polyarity
   , rprintf, rprintf_
   , Rec((:%), RNil), FormatArgs
-  -- * Unguarded polyarity
+  -- ** Unguarded polyarity
   , printf, printf_
   , FormatFun
+  -- * Single item
+  , pfmt
+  , PFmt
+  , mkPFmt, mkPFmt_
   ) where
 
 import           Data.Proxy
 import           Data.Vinyl
 import           Data.Vinyl.Curry
 import           GHC.TypeLits.Printf.Internal
-import           GHC.TypeLits.Printf.Parse
 
 -- | Type-safe printf with faked polyarity.  Pass in a "list" of arguments
 -- (using ':%' and 'RNil'), instead of as multiple arguments.  Call it like
@@ -146,7 +153,7 @@ rprintf = rprintf_ (Proxy @str)
 --
 -- (This should evoke the idea of of @3.62 : "Luigi" : []@, even though the
 -- latter is not possible in Haskell)
-pattern (:%) :: () => FormatChar c a => a -> FormatArgs cs -> FormatArgs (c ': cs)
+pattern (:%) :: () => FormatType c a => a -> FormatArgs cs -> FormatArgs (c ': cs)
 pattern x :% xs = PP x :& xs
 infixr 7 :%
 {-# COMPLETE (:%) #-}

@@ -70,7 +70,7 @@ however, if you find something that satisfies all three benefits while still
 allowing for polymorphism!
 
 You can extend functionality with formatting for your own types by providing
-instances of `FormatChar`.
+instances of `FormatType`.
 
 ## Comparisons
 
@@ -112,4 +112,5 @@ type-safe printf, emulating the features of *base*'s printf and C `printf(3)`.
 
 *   Tests
 *   Single-item formatters using *OverloadedLabels*
-*   Support for localization/dynamic strings.
+*   Support for localization/dynamic strings.  Should be possible, but we'd
+    have to re-implement a subset of singletons.

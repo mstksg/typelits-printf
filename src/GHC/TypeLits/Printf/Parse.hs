@@ -14,6 +14,8 @@
 module GHC.TypeLits.Printf.Parse (
     ParseFmtStr
   , ParseFmtStr_
+  , ParseFmt
+  , ParseFmt_
   , FormatAdjustment(..)
   , FormatSign(..)
   , WidthMod(..)
@@ -153,17 +155,19 @@ type WMParser = (Sym "h" *> (('WMhh <$ Sym "h") <|> Pure 'WMh))
             <|> (Sym "l" *> (('WMll <$ Sym "l") <|> Pure 'WMl))
             <|> ('WML <$ Sym "L")
 
-type FFParser = Sym "%"
-            *> ('FF <$> FlagParser
+type FFParser = 'FF <$> FlagParser
                     <*> Optional Number
                     <*> Optional (Sym "." *> Number)
                     <*> Optional WMParser
                     <*> AnySym
-               )
 
 type FmtStrParser = Many ( ('Left  <$> Cat (Some (NotSym "%" <|> (Sym "%" *> Sym "%"))))
-                       <|> ('Right <$> FFParser               )
+                       <|> ('Right <$> (Sym "%" *> FFParser))
                          )
 
 type ParseFmtStr  str = EvalParser  FmtStrParser str
 type ParseFmtStr_ str = EvalParser_ FmtStrParser str
+
+type ParseFmt  str = EvalParser  FFParser str
+type ParseFmt_ str = EvalParser_ FFParser str
+

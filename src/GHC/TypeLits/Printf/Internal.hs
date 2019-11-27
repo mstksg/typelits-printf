@@ -15,15 +15,48 @@
 {-# LANGUAGE TypeInType             #-}
 {-# LANGUAGE TypeOperators          #-}
 {-# LANGUAGE UndecidableInstances   #-}
+{-# OPTIONS_HADDOCK not-home        #-}
+
+-- |
+-- Module      : GHC.TypeLits.Printf.Internal
+-- Copyright   : (c) Justin Le 2019
+-- License     : BSD3
+--
+-- Maintainer  : justin@jle.im
+-- Stability   : experimental
+-- Portability : non-portable
+--
+-- Internal workings of the printf mechanisms, exposed for potential
+-- debugging purposes.
+--
+-- Please do not use this module for anything besides debugging, as is
+-- definitely very unstable and might go away or change dramatically
+-- between versions.
 
 module GHC.TypeLits.Printf.Internal (
-    FormatChar(..)
+    ParseFmtStr
+  , ParseFmtStr_
+  , ParseFmt
+  , ParseFmt_
+  , FormatAdjustment(..)
+  , FormatSign(..)
+  , WidthMod(..)
+  , Flags(..)
+  , EmptyFlags
+  , FieldFormat(..)
+  , SChar
+  , Demote
+  , Reflect(..)
+  , FormatType(..)
   , PP(..)
   , RPrintf(..)
   , FormatArgs
   , RFormat(..)
   , Printf(..)
   , FormatFun(..)
+  , PFmt(..)
+  , pfmt
+  , mkPFmt, mkPFmt_
   ) where
 
 import           Data.Int
@@ -31,6 +64,7 @@ import           Data.Proxy
 import           Data.Symbol.Utils
 import           Data.Vinyl
 import           Data.Word
+import           GHC.OverloadedLabels
 import           GHC.TypeLits
 import           GHC.TypeLits.Printf.Parse
 import           Numeric.Natural
@@ -43,160 +77,160 @@ import qualified Text.Printf               as P
 --
 -- You can extend the printf methods here for your own types by writing
 -- your instances here.
-class FormatChar (t :: SChar) a where
+class FormatType (t :: SChar) a where
     formatArg :: p t -> a -> P.FieldFormat -> ShowS
 
     default formatArg :: P.PrintfArg a => p t -> a -> P.FieldFormat -> ShowS
     formatArg _ = P.formatArg
 
-instance FormatChar "c" Char
-instance FormatChar "c" Word8
-instance FormatChar "c" Word16
+instance FormatType "c" Char
+instance FormatType "c" Word8
+instance FormatType "c" Word16
 
-instance FormatChar "d" Char
-instance FormatChar "d" Int
-instance FormatChar "d" Int8
-instance FormatChar "d" Int16
-instance FormatChar "d" Int32
-instance FormatChar "d" Int64
-instance FormatChar "d" Integer
-instance FormatChar "d" Natural
-instance FormatChar "d" Word
-instance FormatChar "d" Word8
-instance FormatChar "d" Word16
-instance FormatChar "d" Word32
-instance FormatChar "d" Word64
+instance FormatType "d" Char
+instance FormatType "d" Int
+instance FormatType "d" Int8
+instance FormatType "d" Int16
+instance FormatType "d" Int32
+instance FormatType "d" Int64
+instance FormatType "d" Integer
+instance FormatType "d" Natural
+instance FormatType "d" Word
+instance FormatType "d" Word8
+instance FormatType "d" Word16
+instance FormatType "d" Word32
+instance FormatType "d" Word64
 
-instance FormatChar "o" Char
-instance FormatChar "o" Int
-instance FormatChar "o" Int8
-instance FormatChar "o" Int16
-instance FormatChar "o" Int32
-instance FormatChar "o" Int64
-instance FormatChar "o" Integer
-instance FormatChar "o" Natural
-instance FormatChar "o" Word
-instance FormatChar "o" Word8
-instance FormatChar "o" Word16
-instance FormatChar "o" Word32
-instance FormatChar "o" Word64
+instance FormatType "o" Char
+instance FormatType "o" Int
+instance FormatType "o" Int8
+instance FormatType "o" Int16
+instance FormatType "o" Int32
+instance FormatType "o" Int64
+instance FormatType "o" Integer
+instance FormatType "o" Natural
+instance FormatType "o" Word
+instance FormatType "o" Word8
+instance FormatType "o" Word16
+instance FormatType "o" Word32
+instance FormatType "o" Word64
 
-instance FormatChar "x" Int
-instance FormatChar "x" Int8
-instance FormatChar "x" Int16
-instance FormatChar "x" Int32
-instance FormatChar "x" Int64
-instance FormatChar "x" Integer
-instance FormatChar "x" Natural
-instance FormatChar "x" Word
-instance FormatChar "x" Word8
-instance FormatChar "x" Word16
-instance FormatChar "x" Word32
-instance FormatChar "x" Word64
+instance FormatType "x" Int
+instance FormatType "x" Int8
+instance FormatType "x" Int16
+instance FormatType "x" Int32
+instance FormatType "x" Int64
+instance FormatType "x" Integer
+instance FormatType "x" Natural
+instance FormatType "x" Word
+instance FormatType "x" Word8
+instance FormatType "x" Word16
+instance FormatType "x" Word32
+instance FormatType "x" Word64
 
-instance FormatChar "X" Char
-instance FormatChar "X" Int
-instance FormatChar "X" Int8
-instance FormatChar "X" Int16
-instance FormatChar "X" Int32
-instance FormatChar "X" Int64
-instance FormatChar "X" Integer
-instance FormatChar "X" Natural
-instance FormatChar "X" Word
-instance FormatChar "X" Word8
-instance FormatChar "X" Word16
-instance FormatChar "X" Word32
-instance FormatChar "X" Word64
+instance FormatType "X" Char
+instance FormatType "X" Int
+instance FormatType "X" Int8
+instance FormatType "X" Int16
+instance FormatType "X" Int32
+instance FormatType "X" Int64
+instance FormatType "X" Integer
+instance FormatType "X" Natural
+instance FormatType "X" Word
+instance FormatType "X" Word8
+instance FormatType "X" Word16
+instance FormatType "X" Word32
+instance FormatType "X" Word64
 
-instance FormatChar "b" Char
-instance FormatChar "b" Int
-instance FormatChar "b" Int8
-instance FormatChar "b" Int16
-instance FormatChar "b" Int32
-instance FormatChar "b" Int64
-instance FormatChar "b" Integer
-instance FormatChar "b" Natural
-instance FormatChar "b" Word
-instance FormatChar "b" Word8
-instance FormatChar "b" Word16
-instance FormatChar "b" Word32
-instance FormatChar "b" Word64
+instance FormatType "b" Char
+instance FormatType "b" Int
+instance FormatType "b" Int8
+instance FormatType "b" Int16
+instance FormatType "b" Int32
+instance FormatType "b" Int64
+instance FormatType "b" Integer
+instance FormatType "b" Natural
+instance FormatType "b" Word
+instance FormatType "b" Word8
+instance FormatType "b" Word16
+instance FormatType "b" Word32
+instance FormatType "b" Word64
 
-instance FormatChar "u" Char
-instance FormatChar "u" Int
-instance FormatChar "u" Int8
-instance FormatChar "u" Int16
-instance FormatChar "u" Int32
-instance FormatChar "u" Int64
-instance FormatChar "u" Integer
-instance FormatChar "u" Natural
-instance FormatChar "u" Word
-instance FormatChar "u" Word8
-instance FormatChar "u" Word16
-instance FormatChar "u" Word32
-instance FormatChar "u" Word64
+instance FormatType "u" Char
+instance FormatType "u" Int
+instance FormatType "u" Int8
+instance FormatType "u" Int16
+instance FormatType "u" Int32
+instance FormatType "u" Int64
+instance FormatType "u" Integer
+instance FormatType "u" Natural
+instance FormatType "u" Word
+instance FormatType "u" Word8
+instance FormatType "u" Word16
+instance FormatType "u" Word32
+instance FormatType "u" Word64
 
-instance FormatChar "f" Double
-instance FormatChar "f" Float
+instance FormatType "f" Double
+instance FormatType "f" Float
 
-instance FormatChar "F" Double
-instance FormatChar "F" Float
+instance FormatType "F" Double
+instance FormatType "F" Float
 
-instance FormatChar "g" Double
-instance FormatChar "g" Float
+instance FormatType "g" Double
+instance FormatType "g" Float
 
-instance FormatChar "G" Double
-instance FormatChar "G" Float
+instance FormatType "G" Double
+instance FormatType "G" Float
 
-instance FormatChar "e" Double
-instance FormatChar "e" Float
+instance FormatType "e" Double
+instance FormatType "e" Float
 
-instance FormatChar "E" Double
-instance FormatChar "E" Float
+instance FormatType "E" Double
+instance FormatType "E" Float
 
-instance FormatChar "s" String
-instance FormatChar "s" T.Text where
+instance FormatType "s" String
+instance FormatType "s" T.Text where
     formatArg _ = P.formatArg . T.unpack
-instance FormatChar "s" TL.Text where
+instance FormatType "s" TL.Text where
     formatArg _ = P.formatArg . TL.unpack
 
 -- | Treats as @c@
-instance FormatChar "v" Char
+instance FormatType "v" Char
 -- | Treats as @d@
-instance FormatChar "v" Int
+instance FormatType "v" Int
 -- | Treats as @d@
-instance FormatChar "v" Int8
+instance FormatType "v" Int8
 -- | Treats as @d@
-instance FormatChar "v" Int16
+instance FormatType "v" Int16
 -- | Treats as @d@
-instance FormatChar "v" Int32
+instance FormatType "v" Int32
 -- | Treats as @d@
-instance FormatChar "v" Int64
+instance FormatType "v" Int64
 -- | Treats as @d@
-instance FormatChar "v" Integer
+instance FormatType "v" Integer
 -- | Treats as @u@
-instance FormatChar "v" Natural
+instance FormatType "v" Natural
 -- | Treats as @u@
-instance FormatChar "v" Word
+instance FormatType "v" Word
 -- | Treats as @u@
-instance FormatChar "v" Word8
+instance FormatType "v" Word8
 -- | Treats as @u@
-instance FormatChar "v" Word16
+instance FormatType "v" Word16
 -- | Treats as @u@
-instance FormatChar "v" Word32
+instance FormatType "v" Word32
 -- | Treats as @u@
-instance FormatChar "v" Word64
+instance FormatType "v" Word64
 -- | Treats as @g@
-instance FormatChar "v" Double
+instance FormatType "v" Double
 -- | Treats as @g@
-instance FormatChar "v" Float
+instance FormatType "v" Float
 -- | Treats as @s@
-instance FormatChar "v" String
+instance FormatType "v" String
 -- | Treats as @s@
-instance FormatChar "v" T.Text where
+instance FormatType "v" T.Text where
     formatArg _ = P.formatArg . T.unpack
 -- | Treats as @s@
-instance FormatChar "v" TL.Text where
+instance FormatType "v" TL.Text where
     formatArg _ = P.formatArg . TL.unpack
 
 -- | Required wrapper around inputs to 'GHC.TypeLits.Printf.pprintf'
@@ -209,7 +243,7 @@ instance FormatChar "v" TL.Text where
 -- For example, to make a @'PP' "f"@, you can use @'PP' 3.5@ or @'PP'
 -- 94.2@, but not @'PP' (3 :: Int)@ or @'PP' "hello"@.  To make a value of
 -- type @'PP' c@, you must wrap a value that can be formatted via @c@.
-data PP (c :: SChar) = forall a. FormatChar c a => PP a
+data PP (c :: SChar) = forall a. FormatType c a => PP a
 
 -- | A heterogeneous list (from "Data.Vinyl.Core") used for calling with
 -- 'GHC.TypeLits.Printf.rprintf'.  Instead of supplying the inputs as
@@ -312,7 +346,7 @@ instance FormatFun '[] String where
 instance (KnownSymbol str, FormatFun ffs fun) => FormatFun ('Left str ': ffs) fun where
     formatFun _ str = formatFun (Proxy @ffs) (str ++ symbolVal (Proxy @str))
 
-instance (Reflect ff, ff ~ 'FF f w p m c, FormatChar c a, FormatFun ffs fun) => FormatFun ('Right ff ': ffs) (a -> fun) where
+instance (Reflect ff, ff ~ 'FF f w p m c, FormatType c a, FormatFun ffs fun) => FormatFun ('Right ff ': ffs) (a -> fun) where
     formatFun _ str x = formatFun (Proxy @ffs) (str ++ formatArg (Proxy @c) x ff "")
       where
         ff = reflect (Proxy @ff)
@@ -327,3 +361,68 @@ class Printf (str :: Symbol) fun where
 
 instance (Listify str lst, 'Just ffs ~ ParseFmtStr lst, FormatFun ffs fun) => Printf str fun where
     printf_ _ = formatFun (Proxy @ffs) ""
+
+-- | Utility type powering 'pfmt'.  See dcumentation for 'pfmt' for more
+-- information on usage.
+--
+-- Using /OverloadedLabels/, you never need to construct this directly
+-- can just write @#f@ and a @'PFmt' "f"@ will be generated.  You can also
+-- create this using 'mkPFmt' or 'mkPFmt_', in the situations where
+-- /OverloadedLabels/ doesn't work or is not wanted.
+newtype PFmt c = PFmt P.FieldFormat
+
+-- | A version of 'mkPFmt' that takes an explicit proxy input.
+--
+-- >>> pfmt (mkPFmt_ (Proxy :: Proxy ".2f") 3.6234124
+-- "3.62"
+mkPFmt_
+    :: forall str lst ff f w q m c p. (Listify str lst, 'Just ff ~ ParseFmt lst, Reflect ff, ff ~ 'FF f w q m c)
+    => p str
+    -> PFmt c
+mkPFmt_ _ = PFmt ff
+  where
+    ff = reflect (Proxy @ff)
+
+-- | Useful for using 'pfmt' without /OverloadedLabels/, or also when
+-- passing format specifiers that aren't currently allowed with
+-- /OverloadedLabels/ until GHC 8.10+ (like @#.2f@).
+--
+-- >>> pfmt (mkPFmt @".2f") 3.6234124
+-- "3.62"
+mkPFmt
+    :: forall str lst ff f w q m c. (Listify str lst, 'Just ff ~ ParseFmt lst, Reflect ff, ff ~ 'FF f w q m c)
+    => PFmt c
+mkPFmt = mkPFmt_ @str @lst (Proxy @str)
+
+instance (Listify str lst, 'Just ff ~ ParseFmt lst, Reflect ff, ff ~ 'FF f w p m c) => IsLabel str (PFmt c) where
+    fromLabel = mkPFmt @str @lst
+
+-- | Parse and run a /single/ format hole on a single vale.  Can be useful
+-- for formatting individual items or for testing your own custom instances of
+-- 'FormatType'.
+--
+-- Usually meant to be used with /OverloadedLabels/:
+--
+-- >>> pfmt #f 3.62
+-- "3.62"
+--
+-- However, current versions of GHC disallow labels that aren't valid
+-- identifier names, disallowing things like @'pfmt' #.2f 3.62@.  While
+-- there is an
+-- <https://github.com/ghc-proposals/ghc-proposals/blob/master/proposals/0170-unrestricted-overloadedlabels.rst
+-- approved proposal> that allows this, if you are using an earlier GHC
+-- version, you can get around this using 'mkPFmt':
+--
+-- >>> pfmt (mkPFmt @".2f") 3.6234124
+-- "3.62"
+--
+-- Ideally we'd want to be able to write
+--
+-- >>> pfmt #.2f 3.6234124
+-- "3.62"
+--
+-- (which should be possible in GHC 8.10+)
+--
+-- Note that the format string does not include the leading @%@.
+pfmt :: forall c a. FormatType c a => PFmt c -> a -> String
+pfmt (PFmt ff) x = formatArg (Proxy @c) x ff ""

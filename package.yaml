@@ -36,7 +36,6 @@ dependencies:
 library:
   source-dirs: src
   other-modules:
-  - GHC.TypeLits.Printf.Internal
   - GHC.TypeLits.Printf.Internal.Parser
   - GHC.TypeLits.Printf.Parse
   dependencies:
