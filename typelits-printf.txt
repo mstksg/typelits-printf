@@ -44,14 +44,20 @@
 --   FormatFun '[ .... ] fun =&gt; fun
 --   </pre>
 --   
---   The <a>pprintf</a> and <a>rprintf</a> versions are informative: for
---   <a>pprintf</a>, it shows you need two arguments: A <tt><a>PP</a>
---   "f"</tt> (which is a value that supports being formatted by
---   <tt>f</tt>) like <tt>PP 3.62</tt>, and a <tt><a>PP</a> "s"</tt>, like
---   <tt>PP <a>Luigi</a></tt>. <a>rprintf</a> tells you you need a two-item
---   hlist (from <a>Data.Vinyl.Core</a>), where the first item implements
---   <tt>f</tt> and the second item implements <tt>s</tt>: <tt>3.62
---   <a>:%</a> <a>Luigi</a> :% <a>RNil</a></tt> will do.
+--   <ul>
+--   <li>For <a>pprintf</a>, it shows you need two arguments: A
+--   <tt><a>PP</a> "f"</tt> (which is a value that supports being formatted
+--   by <tt>f</tt>) like <tt>PP 3.62</tt>, and a <tt><a>PP</a> "s"</tt>,
+--   like <tt>PP <a>Luigi</a></tt>.</li>
+--   <li><a>rprintf</a> tells you you need a two-item hlist (from
+--   <a>Data.Vinyl.Core</a>), where the first item implements <tt>f</tt>
+--   and the second item implements <tt>s</tt>: <tt>3.62 <a>:%</a>
+--   <a>Luigi</a> :% <a>RNil</a></tt> will do.</li>
+--   <li>The type of <a>printf</a> is much less informative. It's possible
+--   to see what you need from the <tt>...</tt> in <a>FormatFun</a>...but
+--   it's basically a situation that works fine when it doesn't, but can be
+--   tricky if you mess up.</li>
+--   </ul>
 --   
 --   The following table summarizes the features and drawbacks of each
 --   method:
