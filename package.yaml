@@ -30,6 +30,8 @@ dependencies:
 
 library:
   source-dirs: src
+  other-modues:
+  - GHC.TypeLits.Printf.Internal.Parser
   dependencies:
   - symbols
   - text

@@ -17,24 +17,25 @@
 {-# LANGUAGE UndecidableInstances   #-}
 
 module GHC.TypeLits.Printf (
+  -- * Formattable things
     FormatChar(..)
-  , P(..)
+  , SChar
+  -- * Guarded polyarity
   , pprintf, pprintf_
-  , Rec((:%), RNil)
+  , PP(..)
+  -- * List-based polyarity
+  , Rec((:%), RNil), FormatArgs
   , rprintf, rprintf_
-  , HFormat
-  , hprintf, hprintf_
+  -- * Unguarded polyarity
   , printf, printf_
-  , FormatF
+  , FormatFun
   ) where
 
 import           Data.Int
-import           Data.Kind
 import           Data.Proxy
 import           Data.Symbol.Utils
 import           Data.Vinyl
 import           Data.Vinyl.Curry
-import           Data.Vinyl.Functor
 import           Data.Word
 import           GHC.TypeLits
 import           GHC.TypeLits.Printf.Parse
@@ -43,11 +44,16 @@ import qualified Data.Text                 as T
 import qualified Data.Text.Lazy            as TL
 import qualified Text.Printf               as P
 
+-- | Typeclass associating format types (@d@, @f@, etc.) with the types
+-- that can be formatted by them.
+--
+-- You can extend the printf methods here for your own types by writing
+-- your instances here.
 class FormatChar (t :: SChar) a where
-    format :: p t -> a -> P.FieldFormat -> ShowS
+    formatArg :: p t -> a -> P.FieldFormat -> ShowS
 
-    default format :: P.PrintfArg a => p t -> a -> P.FieldFormat -> ShowS
-    format _ = P.formatArg
+    default formatArg :: P.PrintfArg a => p t -> a -> P.FieldFormat -> ShowS
+    formatArg _ = P.formatArg
 
 instance FormatChar "c" Char
 instance FormatChar "c" Word8
@@ -156,14 +162,25 @@ instance FormatChar "E" Float
 
 instance FormatChar "s" String
 instance FormatChar "s" T.Text where
-    format _ = P.formatArg . T.unpack
+    formatArg _ = P.formatArg . T.unpack
 instance FormatChar "s" TL.Text where
-    format _ = P.formatArg . TL.unpack
+    formatArg _ = P.formatArg . TL.unpack
 
-data P (c :: SChar) = forall a. FormatChar c a => P a
+-- | Required wrapper around inputs to 'pprintf' (guarded polyarity).  See
+-- documentation for 'pprintf' for examples of usage.
+--
+-- You can "wrap" any value in 'PP' as long as it can be formatted as the
+-- format type indicated.
+--
+-- For example, to make a @'PP' "f"@, you can use @'PP' 3.5@ or @'PP'
+-- 94.2@, but not @'PP' (3 :: Int)@ or @'PP' "hello"@.  To make a value of
+-- type @'PP' c@, you must wrap a value that can be formatted via @c@.
+data PP (c :: SChar) = forall a. FormatChar c a => PP a
+
+type FormatArgs = Rec PP
 
 class RFormat (ffs :: [Either Symbol FieldFormat]) (ps :: [SChar]) | ffs -> ps where
-    rformat :: p ffs -> Rec P ps -> ShowS
+    rformat :: p ffs -> FormatArgs ps -> ShowS
 
 instance RFormat '[] '[] where
     rformat _ _ = id
@@ -173,66 +190,114 @@ instance (KnownSymbol str, RFormat ffs ps) => RFormat ('Left str ': ffs) ps wher
                 . rformat (Proxy @ffs) r
 
 instance (Reflect ff, ff ~ 'FF f w p m c, RFormat ffs ps) => RFormat ('Right ff ': ffs) (c ': ps) where
-    rformat _ (x :% xs) = format (Proxy @c) x ff
+    rformat _ (x :% xs) = formatArg (Proxy @c) x ff
                         . rformat (Proxy @ffs) xs
       where
         ff = reflect (Proxy @ff)
 
 class RPrintf (str :: Symbol) ps where
-    rprintf_ :: p str -> Rec P ps -> String
+    rprintf_ :: p str -> FormatArgs ps -> String
 
 instance (Listify str lst, 'Just ffs ~ ParseFmtStr lst, RFormat ffs ps) => RPrintf str ps where
     rprintf_ _ = ($ "") . rformat (Proxy @ffs)
 
-rprintf :: forall str ps. RPrintf str ps => Rec P ps -> String
+-- | Type-safe printf with faked polyarity.  Pass in a "list" of arguments
+-- (using ':%' and 'RNil'), instead of as multiple arguments.  Call it like
+-- @'rprintf' @"you have %.02f dollars, %s"@.
+--
+-- >>> :t rprintf @"You have %.2f dollars, %s"
+-- FormatArgs '["f", "s"] -> 'String'
+--
+-- This means that it is expecting something that can be printed with @f@
+-- and something that can be printed with @s@.  We can provide a 'Double'
+-- and a 'String':
+--
+-- >>> putStrLn $ 'rprintf' @"You have %.2f dollars, %s" (3.62 ':%' "Luigi" :% 'RNil')
+-- You have 3.62 dollars, Luigi
+--
+-- See 'pprintf' for a version with true polyarity and good clear types,
+-- but requires wrapping its arguments, and 'printf' for a version with
+-- true polyarity but less clear types.
+rprintf :: forall str ps. RPrintf str ps => FormatArgs ps -> String
 rprintf = rprintf_ (Proxy @str)
 
-pattern (:%) :: () => FormatChar c a => a -> Rec P cs -> Rec P (c ': cs)
-pattern x :% xs = P x :& xs
+pattern (:%) :: () => FormatChar c a => a -> FormatArgs cs -> FormatArgs (c ': cs)
+pattern x :% xs = PP x :& xs
 infixr 7 :%
 {-# COMPLETE (:%) #-}
 
-pprintf_ :: forall str ps p. (RPrintf str ps, RecordCurry ps) => p str -> CurriedF P ps String
+pprintf_ :: forall str ps p. (RPrintf str ps, RecordCurry ps) => p str -> CurriedF PP ps String
 pprintf_ p = rcurry @ps (rprintf_ p)
 
-pprintf :: forall str ps. (RPrintf str ps, RecordCurry ps) => CurriedF P ps String
+-- | Type-safe printf with true guarded polyarity.  Call it like @'printf'
+-- @"you have %.02f dollars, %s"@.
+--
+-- A call to printf on a valid string will /always/ give a well-defined
+-- type for a function in return:
+--
+-- >>> :t pprintf @"You have %.2f dollars, %s"
+-- 'PP' "f" -> 'PP' "s" -> 'String'
+--
+-- You can always query the type, and get a well-defined type back, which
+-- you can utilize using typed holes or other type-guided development
+-- techniques.
+--
+-- To give 'pprintf' its arguments, however, they must be wrapped in 'PP':
+--
+-- >>> putStrLn $ pprintf @"You have %.2f dollars, %s" (PP 3.62) (PP "Luigi")
+-- You have 3.62 dollars, Luigi
+--
+-- See 'printf' for a polyariadic method that doesn't require 'PP' on its
+-- inputs, but doesn't have as usable a type when queried before supplying
+-- its arguments, and 'rprintf' for a fake-polyariadic method that doesn't
+-- require 'PP', but requires arguments in a single list instead.
+pprintf :: forall str ps. (RPrintf str ps, RecordCurry ps) => CurriedF PP ps String
 pprintf = pprintf_ @str @ps (Proxy @str)
 
-class HFormat (ps :: [SChar]) (as :: [Type]) where
-    hformat :: HList as -> Rec P ps
+class FormatFun (ffs :: [Either Symbol FieldFormat]) fun where
+    formatFun :: p ffs -> String -> fun
 
-instance HFormat '[] '[] where
-    hformat _ = RNil
+instance FormatFun '[] String where
+    formatFun _ = id
 
-instance (FormatChar c a, HFormat cs as) => HFormat (c ': cs) (a ': as) where
-    hformat (Identity x :& xs) = P x :& hformat xs
+instance (KnownSymbol str, FormatFun ffs fun) => FormatFun ('Left str ': ffs) fun where
+    formatFun _ str = formatFun (Proxy @ffs) (str ++ symbolVal (Proxy @str))
 
-hprintf_ :: forall str ps as p. (RPrintf str ps, HFormat ps as) => p str -> HList as -> String
-hprintf_ p = rprintf_ p . hformat @ps
-
-hprintf :: forall str ps as. (RPrintf str ps, HFormat ps as) => HList as -> String
-hprintf = hprintf_ @str @ps (Proxy @str)
-
-class FormatF (ffs :: [Either Symbol FieldFormat]) fun where
-    formatF :: p ffs -> String -> fun
-
-instance FormatF '[] String where
-    formatF _ = id
-
-instance (KnownSymbol str, FormatF ffs fun) => FormatF ('Left str ': ffs) fun where
-    formatF _ str = formatF (Proxy @ffs) (str ++ symbolVal (Proxy @str))
-
-instance (Reflect ff, ff ~ 'FF f w p m c, FormatChar c a, FormatF ffs fun) => FormatF ('Right ff ': ffs) (a -> fun) where
-    formatF _ str x = formatF (Proxy @ffs) (str ++ format (Proxy @c) x ff "")
+instance (Reflect ff, ff ~ 'FF f w p m c, FormatChar c a, FormatFun ffs fun) => FormatFun ('Right ff ': ffs) (a -> fun) where
+    formatFun _ str x = formatFun (Proxy @ffs) (str ++ formatArg (Proxy @c) x ff "")
       where
         ff = reflect (Proxy @ff)
 
 class Printf (str :: Symbol) fun where
     printf_ :: p str -> fun
 
-instance (Listify str lst, 'Just ffs ~ ParseFmtStr lst, FormatF ffs fun) => Printf str fun where
-    printf_ _ = formatF (Proxy @ffs) ""
+instance (Listify str lst, 'Just ffs ~ ParseFmtStr lst, FormatFun ffs fun) => Printf str fun where
+    printf_ _ = formatFun (Proxy @ffs) ""
 
+-- | Type-safe printf with true naked polyarity.  Call it like @'printf'
+-- @"you have %.02f dollars, %s"@.
+--
+-- >>> putStrLn $ printf @"You have %.2f dollars, %s" 3.62 "Luigi"
+-- You have 3.62 dollars, Luigi
+--
+-- If you what the type of this function unapplied (or with not enough
+-- arguments), or try to use it with
+-- typed holes or type-guided development, the type errors aren't going to
+-- be pretty in most situations.  In addition, you always have to make sure
+-- the result type can be inferred as 'String', which may require a type
+-- annotation in some situations.
+--
+-- (Measures have been taken to make the error messages as helpful as
+-- possible, but they're not going to be as pretty as for 'pprintf' or
+-- 'rprintf')
+--
+-- However, if you use it properly with the right number of arguments,
+-- everything should work and be type-safe: code with missing or badly
+-- typed arguments will not compile.
+--
+-- See 'pprintf' for a version of this with much nicer types and type
+-- errors, but requires wrapping arguments, and 'rprintf' for a version of
+-- this with "fake" polyarity, taking a list as input instead.
 printf :: forall str fun. Printf str fun => fun
 printf = printf_ (Proxy @str)
 

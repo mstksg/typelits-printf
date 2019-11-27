@@ -161,7 +161,7 @@ type FFParser = Sym "%"
                     <*> AnySym
                )
 
-type FmtStrParser = Many ( ('Left  <$> Cat (Some (NotSym "%")))
+type FmtStrParser = Many ( ('Left  <$> Cat (Some (NotSym "%" <|> (Sym "%" *> Sym "%"))))
                        <|> ('Right <$> FFParser               )
                          )
 
