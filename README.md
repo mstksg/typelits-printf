@@ -47,7 +47,13 @@ FormatFun '[ .... ] fun => fun
     `3.62 :% "Luigi" :% RNil` will do.
 *   The type of `printf` is much less informative.  It's possible to see what
     you need from the `...` in `FormatFun`...but it's basically a situation
-    that works fine when it does, but can be tricky if you mess up.
+    that works fine when it does, but can be tricky if you mess up.  The
+    up-side is that it is the cleanest to call if you already know what you
+    need: you can just give the arguments plainly, like `3.62` and `"Luigi"`.
+
+    Debugging it might not be so fun, but at least all debugging is
+    compile-time: you won't be able to compile-it until it is correct, so that
+    means you won't be dealing with run-time errors.
 
 The following table summarizes the features and drawbacks of each
 method:
@@ -66,7 +72,7 @@ allowing for polymorphism!
 You can extend functionality with formatting for your own types by providing
 instances of `FormatChar`.
 
-### Comparisons
+## Comparisons
 
 There are a few other options for type-safe printfs out on hackage, and they
 all differ in a few key ways.  Some, like *[th-printf][]* and
@@ -101,3 +107,9 @@ type-safe printf, emulating the features of *base*'s printf and C `printf(3)`.
 [printf-safe]: https://hackage.haskell.org/package/printf-safe
 [xformat]: https://hackage.haskell.org/package/xformat
 [category-printf]: https://hackage.haskell.org/package/category-printf
+
+## Todo
+
+*   Tests
+*   Single-item formatters using *OverloadedLabels*
+*   Support for localization/dynamic strings.
