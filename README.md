@@ -4,6 +4,11 @@
 
 [symbols]: https://hackage.haskell.org/package/symbols-0.3.0.0/docs/Data-Symbol-Examples-Printf.html
 
+```haskell
+ghci> putStrLn $ printf @"You have %.2f dollars, %s" 3.62 "Luigi"
+You have 3.62 dollars, Luigi
+```
+
 An extensible and type-safe printf from parsing GHC TypeLits Symbol literals,
 matching the semantics of *[Text.Printf][]* in *base*.  The difference is that
 the variants here will always fail to compile if given arguments of the wrong
@@ -13,42 +18,32 @@ when queried with `:t` or with typed holes.
 
 [Text.Printf]: https://hackage.haskell.org/package/base/docs/Text-Printf.html
 
-Comparing their usage/calling conventions:
+There are three main calling conventions offered:
 
 ```haskell
+ghci> putStrLn $ printf @"You have %.2f dollars, %s" 3.62 "Luigi"
+You have 3.62 dollars, Luigi
+
 ghci> putStrLn $ pprintf @"You have %.2f dollars, %s" (PP 3.62) (PP "Luigi")
 You have 3.62 dollars, Luigi
 
 ghci> putStrLn $ rprintf @"You have %.2f dollars, %s" (3.62 :% "Luigi" :% RNil)
 You have 3.62 dollars, Luigi
-
-ghci> putStrLn $ printf @"You have %.2f dollars, %s" 3.62 "Luigi"
-You have 3.62 dollars, Luigi
-
--- printf also supports directly printing, like in Text.Printf
-ghci> printf @"You have %.2f dollars, %s" 3.62 "Luigi"
-You have 3.62 dollars, Luigi
 ```
 
-Now comparing their types:
+Comparing their types:
 
 ```haskell
+ghci> :t printf @"You have %.2f dollars, %s" 3.62 "Luigi"
+FormatFun '[ .... ] fun => fun
+
 ghci> :t pprintf @"You have %.2f dollars, %s" 3.62 "Luigi"
 PP "f" -> PP "s" -> String
 
 ghci> :t rprintf @"You have %.2f dollars, %s" 3.62 "Luigi"
 FormatArgs '["f", "s"] -> String
-
-ghci> :t printf @"You have %.2f dollars, %s" 3.62 "Luigi"
-FormatFun '[ .... ] fun => fun
 ```
 
-*   For `pprintf`, it shows you need two arguments: A `PP "f"` (which is a
-    value that supports being formatted by `f`) like `PP 3.62`, and a `PP "s"`,
-    like `PP "Luigi"`.
-*   `rprintf` tells you you need a two-item hlist (from "Data.Vinyl.Core"),
-    where the first item implements `f` and the second item implements `s`:
-    `3.62 :% "Luigi" :% RNil` will do.
 *   The type of `printf` doesn't tell you immediately what you
     you need.  However, if you do try to use it, the type errors will guide you
     along the way, iteratively.
@@ -72,15 +67,21 @@ FormatFun '[ .... ] fun => fun
     -- Either remove the argument, or rewrite the format string to include the
     -- appropriate hole.
     ```
+*   For `pprintf`, it shows you need two arguments: A `PP "f"` (which is a
+    value that supports being formatted by `f`) like `PP 3.62`, and a `PP "s"`,
+    like `PP "Luigi"`.
+*   `rprintf` tells you you need a two-item hlist (from "Data.Vinyl.Core"),
+    where the first item implements `f` and the second item implements `s`:
+    `3.62 :% "Luigi" :% RNil` will do.
 
 The following table summarizes the features and drawbacks of each
 method:
 
 | Method    | True Polyarity   | Naked Arguments    | Type feedback        |
 | --------- | ---------------- | ------------------ | -------------------- |
+| `printf`  | Yes              | Yes                | Partial (via errors) |
 | `pprintf` | Yes              | No (requires `PP`) | Yes                  |
 | `rprintf` | No (HList-based) | Yes                | Yes                  |
-| `printf`  | Yes              | Yes                | Partial (via errors) |
 
 *Ideally* we would have a solution that has all three.  However, as of now, we
 have a "pick two" sort of situation.  Suggestions are definitely welcome,

@@ -35,36 +35,24 @@
 -- details on how this formats items of various types, and the differences
 -- with C @printf(3)@.
 --
--- Comparing their usage/calling conventions:
+-- There are three main calling conventions supported:
 --
+-- >>> putStrLn $ printf @"You have %.2f dollars, %s" 3.62 "Luigi"
+-- You have 3.62 dollars, Luigi
 -- >>> putStrLn $ pprintf @"You have %.2f dollars, %s" (PP 3.62) (PP "Luigi")
 -- You have 3.62 dollars, Luigi
 -- >>> putStrLn $ rprintf @"You have %.2f dollars, %s" (3.62 :% "Luigi" :% RNil)
 -- You have 3.62 dollars, Luigi
--- >>> putStrLn $ printf @"You have %.2f dollars, %s" 3.62 "Luigi"
--- You have 3.62 dollars, Luigi
 --
 -- Now comparing their types:
 --
+-- >>> :t printf @"You have %.2f dollars, %s" 3.62 "Luigi"
+-- FormatFun '[ .... ] fun => fun
 -- >>> :t pprintf @"You have %.2f dollars, %s" 3.62 "Luigi"
 -- PP "f" -> PP "s" -> String
 -- >>> :t rprintf @"You have %.2f dollars, %s" 3.62 "Luigi"
 -- FormatArgs '["f", "s"] -> String
--- >>> :t printf @"You have %.2f dollars, %s" 3.62 "Luigi"
--- FormatFun '[ .... ] fun => fun
 --
--- * For 'pprintf', it shows you need two arguments: A @'PP' "f"@ (which is
---   a value that supports being formatted by @f@) like @PP 3.62@, and
---   a @'PP' "s"@, like @PP "Luigi"@.
--- * 'rprintf' tells you you need a two-item hlist (from
---   "Data.Vinyl.Core"), where the first item implements @f@ and the second
---   item implements @s@: @3.62 ':%' "Luigi" :% 'RNil'@ will do.
--- * The type of 'printf' is much less informative.  It's possible to see
---   what you need from the @...@ in 'FormatFun'...but it's basically
---   a situation that works fine when it does, but can be tricky if you
---   mess up. The up-side is that it is the cleanest to call if you already
---   know what you need: you can just give the arguments plainly, like
---   @3.62@ and @"Luigi"@.
 -- * The type of `printf` doesn't tell you immediately what you
 --   you need.  However, if you do try to use it, the type errors will guide you
 --   along the way, iteratively.
@@ -86,6 +74,12 @@
 --   -- ERROR: An extra argument of type Integer was given to a call to printf
 --   -- Either remove the argument, or rewrite the format string to include the
 --   -- appropriate hole.
+-- * For 'pprintf', it shows you need two arguments: A @'PP' "f"@ (which is
+--   a value that supports being formatted by @f@) like @PP 3.62@, and
+--   a @'PP' "s"@, like @PP "Luigi"@.
+-- * 'rprintf' tells you you need a two-item hlist (from
+--   "Data.Vinyl.Core"), where the first item implements @f@ and the second
+--   item implements @s@: @3.62 ':%' "Luigi" :% 'RNil'@ will do.
 --
 -- The following table summarizes the features and drawbacks of each
 -- method:
@@ -93,11 +87,11 @@
 -- +-----------+------------------+--------------------+----------------------+
 -- | Method    | True Polyarity   | Naked Arguments    | Type feedback        |
 -- +===========+==================+====================+======================+
+-- | 'printf'  | Yes              | Yes                | Partial (via errors) |
+-- +-----------+------------------+--------------------+----------------------+
 -- | 'pprintf' | Yes              | No (requires 'PP') | Yes                  |
 -- +-----------+------------------+--------------------+----------------------+
 -- | 'rprintf' | No (HList-based) | Yes                | Yes                  |
--- +-----------+------------------+--------------------+----------------------+
--- | 'printf'  | Yes              | Yes                | Partial (via errors) |
 -- +-----------+------------------+--------------------+----------------------+
 --
 -- /Ideally/ we would have a solution that has all three.  However, as of
@@ -116,6 +110,10 @@ module GHC.TypeLits.Printf (
     FormatType(..)
   , SChar
   -- * Printf
+  -- ** Unguarded polyarity
+  , printf, printf_
+  , PHelp, pHelp
+  , FormatFun
   -- ** Guarded polyarity
   , pprintf
   , pprintf_
@@ -123,10 +121,6 @@ module GHC.TypeLits.Printf (
   -- ** List-based polyarity
   , rprintf, rprintf_
   , Rec((:%), RNil), FormatArgs
-  -- ** Unguarded polyarity
-  , printf, printf_
-  , PHelp, pHelp
-  , FormatFun
   -- * Single item
   , pfmt
   , PFmt
