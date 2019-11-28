@@ -465,47 +465,33 @@ instance GHC.TypeLits.Printf.Internal.FormatType "v" Data.Text.Internal.Lazy.Tex
 --   formats items of various types, and the differences with C
 --   <tt>printf(3)</tt>.
 --   
---   Comparing their usage/calling conventions:
+--   There are three main calling conventions supported:
 --   
 --   <pre>
+--   &gt;&gt;&gt; putStrLn $ printf @"You have %.2f dollars, %s" 3.62 "Luigi"
+--   You have 3.62 dollars, Luigi
+--   
 --   &gt;&gt;&gt; putStrLn $ pprintf @"You have %.2f dollars, %s" (PP 3.62) (PP "Luigi")
 --   You have 3.62 dollars, Luigi
 --   
 --   &gt;&gt;&gt; putStrLn $ rprintf @"You have %.2f dollars, %s" (3.62 :% "Luigi" :% RNil)
---   You have 3.62 dollars, Luigi
---   
---   &gt;&gt;&gt; putStrLn $ printf @"You have %.2f dollars, %s" 3.62 "Luigi"
 --   You have 3.62 dollars, Luigi
 --   </pre>
 --   
 --   Now comparing their types:
 --   
 --   <pre>
+--   &gt;&gt;&gt; :t printf @"You have %.2f dollars, %s" 3.62 "Luigi"
+--   FormatFun '[ .... ] fun =&gt; fun
+--   
 --   &gt;&gt;&gt; :t pprintf @"You have %.2f dollars, %s" 3.62 "Luigi"
 --   PP "f" -&gt; PP "s" -&gt; String
 --   
 --   &gt;&gt;&gt; :t rprintf @"You have %.2f dollars, %s" 3.62 "Luigi"
 --   FormatArgs '["f", "s"] -&gt; String
---   
---   &gt;&gt;&gt; :t printf @"You have %.2f dollars, %s" 3.62 "Luigi"
---   FormatFun '[ .... ] fun =&gt; fun
 --   </pre>
 --   
 --   <ul>
---   <li>For <a>pprintf</a>, it shows you need two arguments: A
---   <tt><a>PP</a> "f"</tt> (which is a value that supports being formatted
---   by <tt>f</tt>) like <tt>PP 3.62</tt>, and a <tt><a>PP</a> "s"</tt>,
---   like <tt>PP <a>Luigi</a></tt>.</li>
---   <li><a>rprintf</a> tells you you need a two-item hlist (from
---   <a>Data.Vinyl.Core</a>), where the first item implements <tt>f</tt>
---   and the second item implements <tt>s</tt>: <tt>3.62 <a>:%</a>
---   <a>Luigi</a> :% <a>RNil</a></tt> will do.</li>
---   <li>The type of <a>printf</a> is much less informative. It's possible
---   to see what you need from the <tt>...</tt> in <a>FormatFun</a>...but
---   it's basically a situation that works fine when it does, but can be
---   tricky if you mess up. The up-side is that it is the cleanest to call
---   if you already know what you need: you can just give the arguments
---   plainly, like <tt>3.62</tt> and <tt><a>Luigi</a></tt>.</li>
 --   <li>The type of <a>printf</a> doesn't tell you immediately what you
 --   you need. However, if you do try to use it, the type errors will guide
 --   you along the way, iteratively.</li>
@@ -535,6 +521,12 @@ instance GHC.TypeLits.Printf.Internal.FormatType "v" Data.Text.Internal.Lazy.Tex
 --   -- ERROR: An extra argument of type Integer was given to a call to printf
 --   -- Either remove the argument, or rewrite the format string to include the
 --   -- appropriate hole.
+--    * For 'pprintf', it shows you need two arguments: A @'PP' "f"@ (which is
+--   a value that supports being formatted by @f@) like @PP 3.62@, and
+--   a @'PP' "s"@, like @PP "Luigi"@.
+--    * 'rprintf' tells you you need a two-item hlist (from
+--   "Data.Vinyl.Core"), where the first item implements @f@ and the second
+--   item implements @s@: @3.62 ':%' "Luigi" :% 'RNil'@ will do.
 --   </pre>
 --   
 --   The following table summarizes the features and drawbacks of each
@@ -568,142 +560,6 @@ formatArg :: (FormatType t a, PrintfArg a) => p t -> a -> FieldFormat -> ShowS
 --   see <a>SChar</a> in a type signature, it means that it's expected to
 --   be a symbol/string with only one single character.
 type SChar = Symbol
-
--- | Type-safe printf with true guarded polyarity. Call it like
---   <tt><a>pprintf</a> @"you have %.02f dollars, %s"</tt>.
---   
---   A call to printf on a valid string will <i>always</i> give a
---   well-defined type for a function in return:
---   
---   <pre>
---   &gt;&gt;&gt; :t pprintf @"You have %.2f dollars, %s"
---   PP "f" -&gt; PP "s" -&gt; String
---   </pre>
---   
---   You can always query the type, and get a well-defined type back, which
---   you can utilize using typed holes or other type-guided development
---   techniques.
---   
---   To give <a>pprintf</a> its arguments, however, they must be wrapped in
---   <a>PP</a>:
---   
---   <pre>
---   &gt;&gt;&gt; putStrLn $ pprintf @"You have %.2f dollars, %s" (PP 3.62) (PP "Luigi")
---   You have 3.62 dollars, Luigi
---   </pre>
---   
---   See <a>printf</a> for a polyariadic method that doesn't require
---   <a>PP</a> on its inputs, but with a less helpful type signature, and
---   <a>rprintf</a> for a fake-polyariadic method that doesn't require
---   <a>PP</a>, but requires arguments in a single list instead. Also see
---   top-level module documentation <a>GHC.TypeLits.Printf</a> for a more
---   comprehensive summary.
-pprintf :: forall str ps. (RPrintf str ps, RecordCurry ps) => CurriedF PP ps String
-
--- | A version of <a>pprintf</a> taking an explicit proxy, which allows
---   usage without <i>TypeApplications</i>
---   
---   <pre>
---   &gt;&gt;&gt; :t pprintf_ (Proxy :: Proxy "You have %.2f dollars, %s")
---   PP "f" -&gt; PP "s" -&gt; String
---   </pre>
-pprintf_ :: forall str ps p. (RPrintf str ps, RecordCurry ps) => p str -> CurriedF PP ps String
-
--- | Required wrapper around inputs to <a>pprintf</a> (guarded polyarity).
---   See documentation for <a>pprintf</a> for examples of usage.
---   
---   You can "wrap" any value in <a>PP</a> as long as it can be formatted
---   as the format type indicated.
---   
---   For example, to make a <tt><a>PP</a> "f"</tt>, you can use
---   <tt><a>PP</a> 3.5</tt> or <tt><a>PP</a> 94.2</tt>, but not
---   <tt><a>PP</a> (3 :: Int)</tt> or <tt><a>PP</a> "hello"</tt>. To make a
---   value of type <tt><a>PP</a> c</tt>, you must wrap a value that can be
---   formatted via <tt>c</tt>.
-data PP (c :: SChar)
-PP :: a -> PP (c :: SChar)
-
--- | Type-safe printf with faked polyarity. Pass in a "list" of arguments
---   (using <a>:%</a> and <a>RNil</a>), instead of as multiple arguments.
---   Call it like <tt><a>rprintf</a> @"you have %.02f dollars, %s"</tt>.
---   
---   <pre>
---   &gt;&gt;&gt; :t rprintf @"You have %.2f dollars, %s"
---   FormatArgs '["f", "s"] -&gt; String
---   </pre>
---   
---   This means that it is expecting something that can be printed with
---   <tt>f</tt> and something that can be printed with <tt>s</tt>. We can
---   provide a <a>Double</a> and a <a>String</a>:
---   
---   <pre>
---   &gt;&gt;&gt; putStrLn $ rprintf @"You have %.2f dollars, %s" (3.62 ':%' "Luigi" :% 'RNil')
---   You have 3.62 dollars, Luigi
---   </pre>
---   
---   See <a>pprintf</a> for a version with true polyarity and good clear
---   types, but requires wrapping its arguments, and <a>printf</a> for a
---   version with true polyarity but less clear types. Also see top-level
---   module documentation <a>GHC.TypeLits.Printf</a> for a more
---   comprehensive summary.
-rprintf :: forall str ps. RPrintf str ps => FormatArgs ps -> String
-
--- | A version of <a>rprintf</a> taking an explicit proxy, which allows
---   usage without <i>TypeApplications</i>
---   
---   <pre>
---   &gt;&gt;&gt; :t rprintf_ (Proxy :: Proxy "You have %.2f dollars, %s")
---   FormatArgs '["f", "s"] -&gt; String
---   </pre>
-rprintf_ :: RPrintf str ps => p str -> FormatArgs ps -> String
-
--- | A record is parameterized by a universe <tt>u</tt>, an interpretation
---   <tt>f</tt> and a list of rows <tt>rs</tt>. The labels or indices of
---   the record are given by inhabitants of the kind <tt>u</tt>; the type
---   of values at any label <tt>r :: u</tt> is given by its interpretation
---   <tt>f r :: *</tt>.
-data Rec (a :: u -> Type) (b :: [u])
-[RNil] :: forall u (a :: u -> Type). Rec a ('[] :: [u])
-
--- | Pattern and constructor allowing you to construct a <a>FormatArgs</a>.
---   
---   To construct a <tt><a>FormatArgs</a> '["f", "s"]</tt>, for instance,
---   you need to give a value formattable by <tt>f</tt> and a value
---   formattable by <tt>s</tt>, given like a linked list, with <a>:%</a>
---   for cons and <a>RNil</a> for nil.
---   
---   <pre>
---   3.62 <a>:%</a> <a>Luigi</a> :% <a>RNil</a>
---   </pre>
---   
---   (This should evoke the idea of of <tt>3.62 : <a>Luigi</a> : []</tt>,
---   even though the latter is not possible in Haskell)
-pattern (:%) :: () => FormatType c a => a -> FormatArgs cs -> FormatArgs (c : cs)
-infixr 7 :%
-
--- | A heterogeneous list (from <a>Data.Vinyl.Core</a>) used for calling
---   with <a>rprintf</a>. Instead of supplying the inputs as different
---   arguments, we can gather all the inputs into a single list to give to
---   <a>rprintf</a>.
---   
---   <pre>
---   &gt;&gt;&gt; :t rprintf @"You have %.2f dollars, %s"
---   FormatArgs '["f", "s"] -&gt; String
---   </pre>
---   
---   To construct a <tt><a>FormatArgs</a> '["f", "s"]</tt>, you need to
---   give a value formattable by <tt>f</tt> and a value formattable by
---   <tt>s</tt>, given like a linked list, with <a>:%</a> for cons and
---   <a>RNil</a> for nil.
---   
---   <pre>
---   &gt;&gt;&gt; putStrLn $ rprintf @"You have %.2f dollars, %s" (3.62 :% "Luigi" :% RNil)
---   You have 3.62 dollars, Luigi
---   </pre>
---   
---   (This should evoke the idea of of <tt>3.62 : <a>Luigi</a> : []</tt>,
---   even though the latter is not possible in Haskell)
-type FormatArgs = Rec PP
 
 -- | Type-safe printf with true naked polyarity. Call it like
 --   <tt><a>printf</a> @"you have %.02f dollars, %s"</tt>.
@@ -887,6 +743,142 @@ pHelp :: PHelp -> String
 --   <a>pHelp</a> can give the type system the nudge it needs to provide
 --   good errors.
 class FormatFun (ffs :: [Either Symbol FieldFormat]) fun
+
+-- | Type-safe printf with true guarded polyarity. Call it like
+--   <tt><a>pprintf</a> @"you have %.02f dollars, %s"</tt>.
+--   
+--   A call to printf on a valid string will <i>always</i> give a
+--   well-defined type for a function in return:
+--   
+--   <pre>
+--   &gt;&gt;&gt; :t pprintf @"You have %.2f dollars, %s"
+--   PP "f" -&gt; PP "s" -&gt; String
+--   </pre>
+--   
+--   You can always query the type, and get a well-defined type back, which
+--   you can utilize using typed holes or other type-guided development
+--   techniques.
+--   
+--   To give <a>pprintf</a> its arguments, however, they must be wrapped in
+--   <a>PP</a>:
+--   
+--   <pre>
+--   &gt;&gt;&gt; putStrLn $ pprintf @"You have %.2f dollars, %s" (PP 3.62) (PP "Luigi")
+--   You have 3.62 dollars, Luigi
+--   </pre>
+--   
+--   See <a>printf</a> for a polyariadic method that doesn't require
+--   <a>PP</a> on its inputs, but with a less helpful type signature, and
+--   <a>rprintf</a> for a fake-polyariadic method that doesn't require
+--   <a>PP</a>, but requires arguments in a single list instead. Also see
+--   top-level module documentation <a>GHC.TypeLits.Printf</a> for a more
+--   comprehensive summary.
+pprintf :: forall str ps. (RPrintf str ps, RecordCurry ps) => CurriedF PP ps String
+
+-- | A version of <a>pprintf</a> taking an explicit proxy, which allows
+--   usage without <i>TypeApplications</i>
+--   
+--   <pre>
+--   &gt;&gt;&gt; :t pprintf_ (Proxy :: Proxy "You have %.2f dollars, %s")
+--   PP "f" -&gt; PP "s" -&gt; String
+--   </pre>
+pprintf_ :: forall str ps p. (RPrintf str ps, RecordCurry ps) => p str -> CurriedF PP ps String
+
+-- | Required wrapper around inputs to <a>pprintf</a> (guarded polyarity).
+--   See documentation for <a>pprintf</a> for examples of usage.
+--   
+--   You can "wrap" any value in <a>PP</a> as long as it can be formatted
+--   as the format type indicated.
+--   
+--   For example, to make a <tt><a>PP</a> "f"</tt>, you can use
+--   <tt><a>PP</a> 3.5</tt> or <tt><a>PP</a> 94.2</tt>, but not
+--   <tt><a>PP</a> (3 :: Int)</tt> or <tt><a>PP</a> "hello"</tt>. To make a
+--   value of type <tt><a>PP</a> c</tt>, you must wrap a value that can be
+--   formatted via <tt>c</tt>.
+data PP (c :: SChar)
+PP :: a -> PP (c :: SChar)
+
+-- | Type-safe printf with faked polyarity. Pass in a "list" of arguments
+--   (using <a>:%</a> and <a>RNil</a>), instead of as multiple arguments.
+--   Call it like <tt><a>rprintf</a> @"you have %.02f dollars, %s"</tt>.
+--   
+--   <pre>
+--   &gt;&gt;&gt; :t rprintf @"You have %.2f dollars, %s"
+--   FormatArgs '["f", "s"] -&gt; String
+--   </pre>
+--   
+--   This means that it is expecting something that can be printed with
+--   <tt>f</tt> and something that can be printed with <tt>s</tt>. We can
+--   provide a <a>Double</a> and a <a>String</a>:
+--   
+--   <pre>
+--   &gt;&gt;&gt; putStrLn $ rprintf @"You have %.2f dollars, %s" (3.62 ':%' "Luigi" :% 'RNil')
+--   You have 3.62 dollars, Luigi
+--   </pre>
+--   
+--   See <a>pprintf</a> for a version with true polyarity and good clear
+--   types, but requires wrapping its arguments, and <a>printf</a> for a
+--   version with true polyarity but less clear types. Also see top-level
+--   module documentation <a>GHC.TypeLits.Printf</a> for a more
+--   comprehensive summary.
+rprintf :: forall str ps. RPrintf str ps => FormatArgs ps -> String
+
+-- | A version of <a>rprintf</a> taking an explicit proxy, which allows
+--   usage without <i>TypeApplications</i>
+--   
+--   <pre>
+--   &gt;&gt;&gt; :t rprintf_ (Proxy :: Proxy "You have %.2f dollars, %s")
+--   FormatArgs '["f", "s"] -&gt; String
+--   </pre>
+rprintf_ :: RPrintf str ps => p str -> FormatArgs ps -> String
+
+-- | A record is parameterized by a universe <tt>u</tt>, an interpretation
+--   <tt>f</tt> and a list of rows <tt>rs</tt>. The labels or indices of
+--   the record are given by inhabitants of the kind <tt>u</tt>; the type
+--   of values at any label <tt>r :: u</tt> is given by its interpretation
+--   <tt>f r :: *</tt>.
+data Rec (a :: u -> Type) (b :: [u])
+[RNil] :: forall u (a :: u -> Type). Rec a ('[] :: [u])
+
+-- | Pattern and constructor allowing you to construct a <a>FormatArgs</a>.
+--   
+--   To construct a <tt><a>FormatArgs</a> '["f", "s"]</tt>, for instance,
+--   you need to give a value formattable by <tt>f</tt> and a value
+--   formattable by <tt>s</tt>, given like a linked list, with <a>:%</a>
+--   for cons and <a>RNil</a> for nil.
+--   
+--   <pre>
+--   3.62 <a>:%</a> <a>Luigi</a> :% <a>RNil</a>
+--   </pre>
+--   
+--   (This should evoke the idea of of <tt>3.62 : <a>Luigi</a> : []</tt>,
+--   even though the latter is not possible in Haskell)
+pattern (:%) :: () => FormatType c a => a -> FormatArgs cs -> FormatArgs (c : cs)
+infixr 7 :%
+
+-- | A heterogeneous list (from <a>Data.Vinyl.Core</a>) used for calling
+--   with <a>rprintf</a>. Instead of supplying the inputs as different
+--   arguments, we can gather all the inputs into a single list to give to
+--   <a>rprintf</a>.
+--   
+--   <pre>
+--   &gt;&gt;&gt; :t rprintf @"You have %.2f dollars, %s"
+--   FormatArgs '["f", "s"] -&gt; String
+--   </pre>
+--   
+--   To construct a <tt><a>FormatArgs</a> '["f", "s"]</tt>, you need to
+--   give a value formattable by <tt>f</tt> and a value formattable by
+--   <tt>s</tt>, given like a linked list, with <a>:%</a> for cons and
+--   <a>RNil</a> for nil.
+--   
+--   <pre>
+--   &gt;&gt;&gt; putStrLn $ rprintf @"You have %.2f dollars, %s" (3.62 :% "Luigi" :% RNil)
+--   You have 3.62 dollars, Luigi
+--   </pre>
+--   
+--   (This should evoke the idea of of <tt>3.62 : <a>Luigi</a> : []</tt>,
+--   even though the latter is not possible in Haskell)
+type FormatArgs = Rec PP
 
 -- | Parse and run a <i>single</i> format hole on a single vale. Can be
 --   useful for formatting individual items or for testing your own custom
