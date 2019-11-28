@@ -91,6 +91,15 @@ allowing for polymorphism!
 You can extend functionality with formatting for your own types by providing
 instances of `FormatType`.
 
+## Caveats
+
+For long strings, the parsing can be fairly slow.  This might be due to the
+underlying mechanism that the *[symbols][]* package exploits.  In the future,
+moving the "symbol decomposition" part of the parsing to a typechecker plugin
+might help.
+
+[symbols]: https://hackage.haskell.org/package/symbols
+
 ## Comparisons
 
 There are a few other options for type-safe printfs out on hackage, and they
@@ -129,7 +138,7 @@ type-safe printf, emulating the features of *base*'s printf and C `printf(3)`.
 
 ## Todo
 
+*   Make faster
 *   Tests
-*   Single-item formatters using *OverloadedLabels*
 *   Support for localization/dynamic strings.  Should be possible, but we'd
     have to re-implement a subset of singletons.
