@@ -53,33 +53,35 @@
 -- >>> :t rprintf @"You have %.2f dollars, %s" 3.62 "Luigi"
 -- FormatArgs '["f", "s"] -> String
 --
--- * The type of `printf` doesn't tell you immediately what you
---   you need.  However, if you do try to use it, the type errors will guide you
---   along the way, iteratively.
+-- *   The type of `printf` doesn't tell you immediately what you you need.
+--     However, if you do try to use it, the type errors will guide you
+--     along the way, iteratively.
 --
---   >>> printf @"You have %.2f dollars, %s"
---   -- ERROR: Call to printf missing argument fulfilling "%.2f"
---   -- Either provide an argument or rewrite the format string to not expect
---   -- one.
+--     >>> printf @"You have %.2f dollars, %s"
+--     -- ERROR: Call to printf missing argument fulfilling "%.2f"
+--     -- Either provide an argument or rewrite the format string to not expect
+--     -- one.
 --
---   >>> printf @"You have %.2f dollars, %s" 3.62
---   -- ERROR: Call to printf missing argument fulfilling "%s"
---   -- Either provide an argument or rewrite the format string to not expect
---   -- one.
+--     >>> printf @"You have %.2f dollars, %s" 3.62
+--     -- ERROR: Call to printf missing argument fulfilling "%s"
+--     -- Either provide an argument or rewrite the format string to not expect
+--     -- one.
 --
---   >>> printf @"You have %.2f dollars, %s" 3.62 "Luigi"
---   You have 3.62 dollars, Luigi
+--     >>> printf @"You have %.2f dollars, %s" 3.62 "Luigi"
+--     You have 3.62 dollars, Luigi
 --
---   >>> printf @"You have %.2f dollars, %s" 3.62 "Luigi" 72
---   -- ERROR: An extra argument of type Integer was given to a call to printf
---   -- Either remove the argument, or rewrite the format string to include the
---   -- appropriate hole.
--- * For 'pprintf', it shows you need two arguments: A @'PP' "f"@ (which is
---   a value that supports being formatted by @f@) like @PP 3.62@, and
---   a @'PP' "s"@, like @PP "Luigi"@.
--- * 'rprintf' tells you you need a two-item hlist (from
---   "Data.Vinyl.Core"), where the first item implements @f@ and the second
---   item implements @s@: @3.62 ':%' "Luigi" :% 'RNil'@ will do.
+--     >>> printf @"You have %.2f dollars, %s" 3.62 "Luigi" 72
+--     -- ERROR: An extra argument of type Integer was given to a call to printf
+--     -- Either remove the argument, or rewrite the format string to include the
+--     -- appropriate hole.
+--
+-- *   For 'pprintf', it shows you need two arguments: A @'PP' "f"@ (which
+--     is a value that supports being formatted by @f@) like @PP 3.62@, and
+--     a @'PP' "s"@, like @PP "Luigi"@.
+--
+-- *   'rprintf' tells you you need a two-item hlist (from
+--     "Data.Vinyl.Core"), where the first item implements @f@ and the
+--     second item implements @s@: @3.62 ':%' "Luigi" :% 'RNil'@ will do.
 --
 -- The following table summarizes the features and drawbacks of each
 -- method:

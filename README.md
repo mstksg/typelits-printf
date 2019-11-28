@@ -67,9 +67,11 @@ FormatArgs '["f", "s"] -> String
     -- Either remove the argument, or rewrite the format string to include the
     -- appropriate hole.
     ```
+
 *   For `pprintf`, it shows you need two arguments: A `PP "f"` (which is a
     value that supports being formatted by `f`) like `PP 3.62`, and a `PP "s"`,
     like `PP "Luigi"`.
+
 *   `rprintf` tells you you need a two-item hlist (from "Data.Vinyl.Core"),
     where the first item implements `f` and the second item implements `s`:
     `3.62 :% "Luigi" :% RNil` will do.
