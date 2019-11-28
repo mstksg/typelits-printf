@@ -425,15 +425,15 @@ forall k (t :: k). Proxy t
 </span><span id="line-333"></span><span class="hs-comment">-- -- ERROR: Call to printf missing argument fulfilling &quot;%.2f&quot;</span><span>
 </span><span id="line-334"></span><span class="hs-comment">-- -- Either provide an argument or rewrite the format string to not expect</span><span>
 </span><span id="line-335"></span><span class="hs-comment">-- -- one.</span><span>
-</span><span id="line-336"></span><span class="hs-comment">-- </span><span>
+</span><span id="line-336"></span><span class="hs-comment">--</span><span>
 </span><span id="line-337"></span><span class="hs-comment">-- &gt;&gt;&gt; printf @&quot;You have %.2f dollars, %s&quot; 3.62</span><span>
 </span><span id="line-338"></span><span class="hs-comment">-- -- ERROR: Call to printf missing argument fulfilling &quot;%s&quot;</span><span>
 </span><span id="line-339"></span><span class="hs-comment">-- -- Either provide an argument or rewrite the format string to not expect</span><span>
 </span><span id="line-340"></span><span class="hs-comment">-- -- one.</span><span>
-</span><span id="line-341"></span><span class="hs-comment">-- </span><span>
+</span><span id="line-341"></span><span class="hs-comment">--</span><span>
 </span><span id="line-342"></span><span class="hs-comment">-- &gt;&gt;&gt; printf @&quot;You have %.2f dollars, %s&quot; 3.62 &quot;Luigi&quot;</span><span>
 </span><span id="line-343"></span><span class="hs-comment">-- You have 3.62 dollars, Luigi</span><span>
-</span><span id="line-344"></span><span class="hs-comment">-- </span><span>
+</span><span id="line-344"></span><span class="hs-comment">--</span><span>
 </span><span id="line-345"></span><span class="hs-comment">-- &gt;&gt;&gt; printf @&quot;You have %.2f dollars, %s&quot; 3.62 &quot;Luigi&quot; 72</span><span>
 </span><span id="line-346"></span><span class="hs-comment">-- -- ERROR: An extra argument of type Integer was given to a call to printf</span><span>
 </span><span id="line-347"></span><span class="hs-comment">-- -- Either remove the argument, or rewrite the format string to include the</span><span>
