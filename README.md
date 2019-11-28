@@ -95,12 +95,18 @@ instances of `FormatType`.
 
 ## Caveats
 
-For long strings, the parsing can be fairly slow.  This might be due to the
-underlying mechanism that the *[symbols][]* package exploits.  In the future,
-moving the "symbol decomposition" part of the parsing to a typechecker plugin
-might help.
+For medium-length or long strings, the parsing can be fairly slow and cause
+slow compile times.  This might be due to the underlying mechanism that the
+*[symbols][]* package exploits.
 
 [symbols]: https://hackage.haskell.org/package/symbols
+
+Moving to typechecker plugin based parsing *does* improve performance ...
+however, I'm not sure how to get around requiring every module using `printf`
+to require enabling the typechecker plugin, which isn't too great from a
+usability standpoint.  Template Haskell based alternatives (like
+*[th-printf][]*) already do require an extra pragma (for *QuasiQuotes*), though
+so it might not be too bad in comparison.
 
 ## Comparisons
 

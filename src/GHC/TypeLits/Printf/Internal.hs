@@ -333,15 +333,15 @@ instance (Listify str lst, ffs ~ ParseFmtStr_ lst, RFormat ffs ps) => RPrintf st
 -- -- ERROR: Call to printf missing argument fulfilling "%.2f"
 -- -- Either provide an argument or rewrite the format string to not expect
 -- -- one.
--- 
+--
 -- >>> printf @"You have %.2f dollars, %s" 3.62
 -- -- ERROR: Call to printf missing argument fulfilling "%s"
 -- -- Either provide an argument or rewrite the format string to not expect
 -- -- one.
--- 
+--
 -- >>> printf @"You have %.2f dollars, %s" 3.62 "Luigi"
 -- You have 3.62 dollars, Luigi
--- 
+--
 -- >>> printf @"You have %.2f dollars, %s" 3.62 "Luigi" 72
 -- -- ERROR: An extra argument of type Integer was given to a call to printf
 -- -- Either remove the argument, or rewrite the format string to include the
