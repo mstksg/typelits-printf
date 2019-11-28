@@ -18,9 +18,9 @@
 </code></strong>PP &quot;f&quot; -&gt; PP &quot;s&quot; -&gt; String
 <code class="prompt">&gt;&gt;&gt; </code><strong class="userinput"><code>:t rprintf @&quot;You have %.2f dollars, %s&quot; 3.62 &quot;Luigi&quot;
 </code></strong>FormatArgs '[&quot;f&quot;, &quot;s&quot;] -&gt; String
-</pre><ul><li>The type of <code><a href="GHC-TypeLits-Printf.html#v:printf" title="GHC.TypeLits.Printf">printf</a></code> doesn't tell you immediately what you
-   you need.  However, if you do try to use it, the type errors will guide you
-   along the way, iteratively.</li></ul><pre class="screen"><code class="prompt">&gt;&gt;&gt; </code><strong class="userinput"><code>printf @&quot;You have %.2f dollars, %s&quot;
+</pre><ul><li><p>The type of <code><a href="GHC-TypeLits-Printf.html#v:printf" title="GHC.TypeLits.Printf">printf</a></code> doesn't tell you immediately what you you need.
+     However, if you do try to use it, the type errors will guide you
+     along the way, iteratively.</p><pre class="screen"><code class="prompt">&gt;&gt;&gt; </code><strong class="userinput"><code>printf @&quot;You have %.2f dollars, %s&quot;
 </code></strong>-- ERROR: Call to printf missing argument fulfilling &quot;%.2f&quot;
 -- Either provide an argument or rewrite the format string to not expect
 -- one.
@@ -34,13 +34,11 @@
 </code></strong>-- ERROR: An extra argument of type Integer was given to a call to printf
 -- Either remove the argument, or rewrite the format string to include the
 -- appropriate hole.
- * For 'pprintf', it shows you need two arguments: A @'PP' &quot;f&quot;@ (which is
-a value that supports being formatted by @f@) like @PP 3.62@, and
-a @'PP' &quot;s&quot;@, like @PP &quot;Luigi&quot;@.
- * 'rprintf' tells you you need a two-item hlist (from
-&quot;Data.Vinyl.Core&quot;), where the first item implements @f@ and the second
-item implements @s@: @3.62 ':%' &quot;Luigi&quot; :% 'RNil'@ will do.
-</pre><p>The following table summarizes the features and drawbacks of each
+</pre></li><li>For <code><a href="GHC-TypeLits-Printf.html#v:pprintf" title="GHC.TypeLits.Printf">pprintf</a></code>, it shows you need two arguments: A <code><code><a href="GHC-TypeLits-Printf.html#t:PP" title="GHC.TypeLits.Printf">PP</a></code> &quot;f&quot;</code> (which
+     is a value that supports being formatted by <code>f</code>) like <code>PP 3.62</code>, and
+     a <code><code><a href="GHC-TypeLits-Printf.html#t:PP" title="GHC.TypeLits.Printf">PP</a></code> &quot;s&quot;</code>, like <code>PP <a href="Luigi.html">Luigi</a></code>.</li><li><code><a href="GHC-TypeLits-Printf.html#v:rprintf" title="GHC.TypeLits.Printf">rprintf</a></code> tells you you need a two-item hlist (from
+     <a href="../vinyl-0.12.0/Data-Vinyl-Core.html">Data.Vinyl.Core</a>), where the first item implements <code>f</code> and the
+     second item implements <code>s</code>: <code>3.62 <code><a href="GHC-TypeLits-Printf.html#v::-37-" title="GHC.TypeLits.Printf">:%</a></code> <a href="Luigi.html">Luigi</a> :% <code><a href="GHC-TypeLits-Printf.html#v:RNil" title="GHC.TypeLits.Printf">RNil</a></code></code> will do.</li></ul><p>The following table summarizes the features and drawbacks of each
  method:</p><table><thead><tr><th> Method    </th><th> True Polyarity   </th><th> Naked Arguments    </th><th> Type feedback        </th></tr></thead><tbody><tr><td> <code><a href="GHC-TypeLits-Printf.html#v:printf" title="GHC.TypeLits.Printf">printf</a></code>  </td><td> Yes              </td><td> Yes                </td><td> Partial (via errors) </td></tr><tr><td> <code><a href="GHC-TypeLits-Printf.html#v:pprintf" title="GHC.TypeLits.Printf">pprintf</a></code> </td><td> Yes              </td><td> No (requires <code><a href="GHC-TypeLits-Printf.html#t:PP" title="GHC.TypeLits.Printf">PP</a></code>) </td><td> Yes                  </td></tr><tr><td> <code><a href="GHC-TypeLits-Printf.html#v:rprintf" title="GHC.TypeLits.Printf">rprintf</a></code> </td><td> No (HList-based) </td><td> Yes                </td><td> Yes                  </td></tr></tbody></table><p><em>Ideally</em> we would have a solution that has all three.  However, as of
  now, we have a &quot;pick two&quot; sort of situation.  Suggestions are definitely
  welcome, however, if you find something that satisfies all three
