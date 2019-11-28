@@ -8,6 +8,8 @@
 module GHC.TypeLits.Printf.Internal.Parser where
 
 import           Data.Kind
+import           Data.Type.Bool
+import           Data.Type.Equality
 import           GHC.TypeLits
 
 -- hello, we're going to attempt to implement
@@ -27,23 +29,20 @@ data Pure :: a -> Parser a
 type instance RunParser (Pure x) str = 'Just '(x, str)
 
 data Sym :: SChar -> Parser SChar
-type family SymHelp (c :: SChar) (str :: [SChar]) :: Maybe (SChar, [SChar]) where
-    SymHelp c (c ': cs) = 'Just '(c, cs)
-    SymHelp c d         = 'Nothing
-type instance RunParser (Sym c) cs = SymHelp c cs
+type instance RunParser (Sym c) (d ': cs) = If (c == d) ('Just '(c, cs)) 'Nothing
+type instance RunParser (Sym c) '[]       = 'Nothing
 
 data NotSym :: SChar -> Parser SChar
-type family NotSymHelp (c :: SChar) (str :: [SChar]) :: Maybe (SChar, [SChar]) where
-    NotSymHelp c (c ': cs) = 'Nothing
-    NotSymHelp c (d ': cs) = 'Just '(d, cs)
-    NotSymHelp c '[]       = 'Nothing
-type instance RunParser (NotSym c) cs = NotSymHelp c cs
+type instance RunParser (NotSym c) (d ': cs) = If (c == d) 'Nothing ('Just '(c, cs))
+type instance RunParser (NotSym c) '[]       = 'Nothing
 
 data AnySym :: Parser SChar
-type family AnySymHelp (str :: [SChar]) :: Maybe (SChar, [SChar]) where
-    AnySymHelp (c ': cs) = 'Just '(c, cs)
-    AnySymHelp '[]       = 'Nothing
-type instance RunParser AnySym cs = AnySymHelp cs
+type instance RunParser AnySym (c ': cs) = 'Just '(c, cs)
+type instance RunParser AnySym '[]       = 'Nothing
+
+data Alpha :: Parser SChar
+type instance RunParser Alpha (c ': cs) = If (IsAlpha c) ('Just '(c, cs)) 'Nothing
+type instance RunParser Alpha '[]       = 'Nothing
 
 data (<$) :: b -> Parser a -> Parser b
 type family RepHelp (x :: b) (r :: Maybe (a, [SChar])) :: Maybe (b, [SChar]) where
@@ -66,7 +65,7 @@ type family SeqHelp (p :: Parser b) (r :: Maybe (a, [SChar])) :: Maybe (b, [SCha
 type instance RunParser (x *> y) str = SeqHelp y (RunParser x str)
 
 -- | Parse a single digit
-data Digit :: Parser Nat 
+data Digit :: Parser Nat
 type family DigitHelp (d :: Maybe Nat) (cs :: [SChar]) :: Maybe (Nat, [SChar]) where
     DigitHelp 'Nothing  cs = 'Nothing
     DigitHelp ('Just d) cs = 'Just '(d, cs)
@@ -134,3 +133,57 @@ type family CatChars (cs :: [SChar]) :: Symbol where
     CatChars '[]       = ""
     CatChars (c ': cs) = AppendSymbol c (CatChars cs)
 
+type family IsAlpha (c :: SChar) :: Bool where
+    IsAlpha "a" = 'True
+    IsAlpha "b" = 'True
+    IsAlpha "c" = 'True
+    IsAlpha "d" = 'True
+    IsAlpha "e" = 'True
+    IsAlpha "f" = 'True
+    IsAlpha "g" = 'True
+    IsAlpha "h" = 'True
+    IsAlpha "i" = 'True
+    IsAlpha "j" = 'True
+    IsAlpha "k" = 'True
+    IsAlpha "l" = 'True
+    IsAlpha "m" = 'True
+    IsAlpha "n" = 'True
+    IsAlpha "o" = 'True
+    IsAlpha "p" = 'True
+    IsAlpha "q" = 'True
+    IsAlpha "r" = 'True
+    IsAlpha "s" = 'True
+    IsAlpha "t" = 'True
+    IsAlpha "u" = 'True
+    IsAlpha "v" = 'True
+    IsAlpha "w" = 'True
+    IsAlpha "x" = 'True
+    IsAlpha "y" = 'True
+    IsAlpha "z" = 'True
+    IsAlpha "A" = 'True
+    IsAlpha "B" = 'True
+    IsAlpha "C" = 'True
+    IsAlpha "D" = 'True
+    IsAlpha "E" = 'True
+    IsAlpha "F" = 'True
+    IsAlpha "G" = 'True
+    IsAlpha "H" = 'True
+    IsAlpha "I" = 'True
+    IsAlpha "J" = 'True
+    IsAlpha "K" = 'True
+    IsAlpha "L" = 'True
+    IsAlpha "M" = 'True
+    IsAlpha "N" = 'True
+    IsAlpha "O" = 'True
+    IsAlpha "P" = 'True
+    IsAlpha "Q" = 'True
+    IsAlpha "R" = 'True
+    IsAlpha "S" = 'True
+    IsAlpha "T" = 'True
+    IsAlpha "U" = 'True
+    IsAlpha "V" = 'True
+    IsAlpha "W" = 'True
+    IsAlpha "X" = 'True
+    IsAlpha "Y" = 'True
+    IsAlpha "Z" = 'True
+    IsAlpha a   = 'False

@@ -207,6 +207,7 @@ type FFParser = 'FF <$> FlagParser
                     <*> Optional (Sym "." *> Number)
                     <*> Optional WMParser
                     <*> AnySym
+                    -- <*> Alpha        -- which of these is right?
 
 type FmtStrParser = Many ( ('Left  <$> Cat (Some (NotSym "%" <|> (Sym "%" *> Sym "%"))))
                        <|> ('Right <$> (Sym "%" *> FFParser))
