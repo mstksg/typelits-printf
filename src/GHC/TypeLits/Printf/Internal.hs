@@ -386,7 +386,7 @@ newtype PHelp = PHelp {
     pHelp :: String
   }
 
-instance (a ~ Char) => FormatFun '[] [a] where
+instance {-# INCOHERENT #-} (a ~ String) => FormatFun '[] a where
     formatFun _ = id
 instance (a ~ Char) => FormatFun '[] PHelp where
     formatFun _ = PHelp
@@ -414,7 +414,7 @@ instance TypeError ( 'Text "An extra argument of type "
 instance (KnownSymbol str, FormatFun ffs fun) => FormatFun ('Left str ': ffs) fun where
     formatFun _ str = formatFun (Proxy @ffs) (str ++ symbolVal (Proxy @str))
 
-instance (Reflect ff, ff ~ 'FF f w p m c, FormatType c a, FormatFun ffs fun) => FormatFun ('Right ff ': ffs) (a -> fun) where
+instance {-# INCOHERENT #-} (afun ~ (arg -> fun), Reflect ff, ff ~ 'FF f w p m c, FormatType c arg, FormatFun ffs fun) => FormatFun ('Right ff ': ffs) afun where
     formatFun _ str x = formatFun (Proxy @ffs) (str ++ formatArg (Proxy @c) x ff "")
       where
         ff = reflect (Proxy @ff)
@@ -460,7 +460,7 @@ newtype PFmt c = PFmt P.FieldFormat
 
 -- | A version of 'mkPFmt' that takes an explicit proxy input.
 --
--- >>> pfmt (mkPFmt_ (Proxy :: Proxy ".2f") 3.6234124
+-- >>> pfmt (mkPFmt_ (Proxy :: Proxy ".2f")) 3.6234124
 -- "3.62"
 mkPFmt_
     :: forall str lst ff f w q m c p. (Listify str lst, ff ~ ParseFmt_ lst, Reflect ff, ff ~ 'FF f w q m c)
