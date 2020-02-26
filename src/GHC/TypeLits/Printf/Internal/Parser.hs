@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs                #-}
 {-# LANGUAGE KindSignatures       #-}
 {-# LANGUAGE NoStarIsType         #-}
 {-# LANGUAGE TypeFamilies         #-}
@@ -11,9 +12,6 @@ import           Data.Kind
 import           Data.Type.Bool
 import           Data.Type.Equality
 import           GHC.TypeLits
-
--- hello, we're going to attempt to implement
--- https://docs.microsoft.com/en-us/cpp/c-runtime-library/format-specification-syntax-printf-and-wprintf-functions?view=vs-2019
 
 -- | A type synonym for a single-character symbol.  Ideally this would just
 -- be 'Char', but we don't have chars at the type level.  So, if you see

@@ -12,19 +12,12 @@ packages:
   original:
     hackage: symbols-0.3.0.0
 - completed:
-    size: 101450
-    url: https://github.com/mstksg/vinyl/archive/6e22f9f0beef8af413abb0daf2b8cbed78431ecf.tar.gz
-    cabal-file:
-      size: 3790
-      sha256: 6136e2608c2c4be0c112944fb0f5a6a0df56b50adec12eb1b7240258abfcf9b1
-    name: vinyl
-    version: 0.12.0
-    sha256: 5c6817bdd91bd26fe3e47f2ff0a4693b627cd2286b89b0507793f211d0b94771
+    hackage: vinyl-0.12.1@sha256:43456d4b3009646eee63953cbe539f1f4d0caf8bc3c25e841117e712836508f3,3790
     pantry-tree:
-      size: 2232
-      sha256: 0422d4fdce722c58bc90e587f47c5bb4111561752b8e4aad0ce09dca3557de3d
+      size: 1857
+      sha256: 1a0a5f97e92926ea84c90c7cc8da6f8ce1765ab7aca5deef98e8feca75c0c4cd
   original:
-    url: https://github.com/mstksg/vinyl/archive/6e22f9f0beef8af413abb0daf2b8cbed78431ecf.tar.gz
+    hackage: vinyl-0.12.1
 snapshots:
 - completed:
     size: 426679

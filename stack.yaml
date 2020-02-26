@@ -41,8 +41,7 @@ packages:
 #
 extra-deps:
 - symbols-0.3.0.0
-- github: mstksg/vinyl
-  commit: 6e22f9f0beef8af413abb0daf2b8cbed78431ecf
+- vinyl-0.12.1
 
 # Override default flag values for local packages and extra-deps
 # flags: {}

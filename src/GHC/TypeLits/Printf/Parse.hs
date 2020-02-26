@@ -38,6 +38,9 @@ import           Text.Printf                         (FormatAdjustment(..), Form
 import qualified Data.Text                           as T
 import qualified Text.Printf                         as P
 
+-- hello, we're going to attempt to implement
+-- https://docs.microsoft.com/en-us/cpp/c-runtime-library/format-specification-syntax-printf-and-wprintf-functions?view=vs-2019
+
 data Flags = Flags
     { fAdjust    :: Maybe FormatAdjustment
     , fSign      :: Maybe FormatSign

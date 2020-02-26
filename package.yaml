@@ -41,4 +41,4 @@ library:
   dependencies:
   - symbols
   - text
-  - vinyl
+  - vinyl >= 0.12.1
