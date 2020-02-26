@@ -31,7 +31,7 @@ type instance RunParser (Sym c) (d ': cs) = If (c == d) ('Just '(c, cs)) 'Nothin
 type instance RunParser (Sym c) '[]       = 'Nothing
 
 data NotSym :: SChar -> Parser SChar
-type instance RunParser (NotSym c) (d ': cs) = If (c == d) 'Nothing ('Just '(c, cs))
+type instance RunParser (NotSym c) (d ': cs) = If (c == d) 'Nothing ('Just '(d, cs))
 type instance RunParser (NotSym c) '[]       = 'Nothing
 
 data AnySym :: Parser SChar
