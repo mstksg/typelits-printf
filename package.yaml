@@ -1,5 +1,5 @@
 name:                typelits-printf
-version:             0.1.0.0
+version:             0.1.1.0
 github:              "mstksg/typelits-printf"
 license:             BSD3
 author:              "Justin Le"
