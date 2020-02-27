@@ -11,84 +11,63 @@ You have 3.62 dollars, Luigi
 
 An extensible and type-safe printf from parsing GHC TypeLits Symbol literals,
 matching the semantics of *[Text.Printf][]* in *base*.  The difference is that
-the variants here will always fail to compile if given arguments of the wrong
-type (or too many or too little arguments). Most of the variants also provide
-useful type feedback, telling you the type of arguments it expects and how many
+your `printf`s will always fail to compile if given arguments of the wrong type
+(or too many or too little arguments).  It also allows you to use types to help
+your development, by telling you the type of arguments it expects and how many
 when queried with `:t` or with typed holes.
 
 [Text.Printf]: https://hackage.haskell.org/package/base/docs/Text-Printf.html
 
-There are three main calling conventions offered:
-
 ```haskell
 ghci> putStrLn $ printf @"You have %.2f dollars, %s" 3.62 "Luigi"
 You have 3.62 dollars, Luigi
-
-ghci> putStrLn $ pprintf @"You have %.2f dollars, %s" (PP 3.62) (PP "Luigi")
-You have 3.62 dollars, Luigi
-
-ghci> putStrLn $ rprintf @"You have %.2f dollars, %s" (3.62 :% "Luigi" :% RNil)
-You have 3.62 dollars, Luigi
 ```
 
-Comparing their types:
+Looking at its type:
 
 ```haskell
-ghci> :t printf @"You have %.2f dollars, %s" 3.62 "Luigi"
-FormatFun '[ .... ] fun => fun
-
-ghci> :t pprintf @"You have %.2f dollars, %s" 3.62 "Luigi"
-PP "f" -> PP "s" -> String
-
-ghci> :t rprintf @"You have %.2f dollars, %s" 3.62 "Luigi"
-FormatArgs '["f", "s"] -> String
+ghci> :t printf @"You have %.2f dollars, %s"
+(FormatType "f" arg1, FormatType "s" arg2)
+  => arg1 -> arg2 -> String
 ```
 
-*   The type of `printf` doesn't tell you immediately what you
-    you need.  However, if you do try to use it, the type errors will guide you
-    along the way, iteratively.
+It tells you that the result is an `arg1 -> arg2 -> String`: take two
+arguments, and return a `String`.  The first argument must be an instance of
+`FormatType "f"` (things that can be formatted by `%f`) and the second argument
+must be an instance of `FormatType "s"` (things that can be formatted by `%s`).
 
-    ```haskell
-    ghci> printf @"You have %.2f dollars, %s"
-    -- ERROR: Call to printf missing argument fulfilling "%.2f"
-    -- Either provide an argument or rewrite the format string to not expect
-    -- one.
+We can see this in action by progressively applying arguments:
 
-    ghci> printf @"You have %.2f dollars, %s" 3.62
-    -- ERROR: Call to printf missing argument fulfilling "%s"
-    -- Either provide an argument or rewrite the format string to not expect
-    -- one.
+```haskell
+ghci> :t printf @"You have %.2f dollars, %s" 3.62
+FormatType "s" arg1 => arg1 -> String
 
-    ghci> printf @"You have %.2f dollars, %s" 3.62 "Luigi"
-    You have 3.62 dollars, Luigi
+ghci> :t printf @"You have %.2f dollars, %s" 3.62 "Luigi"
+String
+```
 
-    ghci> printf @"You have %.2f dollars, %s" 3.62 "Luigi" 72
-    -- ERROR: An extra argument of type Integer was given to a call to printf
-    -- Either remove the argument, or rewrite the format string to include the
-    -- appropriate hole.
-    ```
+The type errors for forgetting to apply an argument (or applying too many
+arguments) are pretty clear:
 
-*   For `pprintf`, it shows you need two arguments: A `PP "f"` (which is a
-    value that supports being formatted by `f`) like `PP 3.62`, and a `PP "s"`,
-    like `PP "Luigi"`.
+```haskell
+ghci> putStrLn $ printf @"You have %.2f dollars, %s"
+-- ERROR: Call to printf missing argument fulfilling "%.2f"
+-- Either provide an argument or rewrite the format string to not expect
+-- one.
 
-*   `rprintf` tells you you need a two-item hlist (from "Data.Vinyl.Core"),
-    where the first item implements `f` and the second item implements `s`:
-    `3.62 :% "Luigi" :% RNil` will do.
+ghci> putStrLn $ printf @"You have %.2f dollars, %s" 3.62
+-- ERROR: Call to printf missing argument fulfilling "%s"
+-- Either provide an argument or rewrite the format string to not expect
+-- one.
 
-The following table summarizes the features and drawbacks of each
-method:
+ghci> putStrLn $ printf @"You have %.2f dollars, %s" 3.62 "Luigi"
+You have 3.62 dollars, Luigi
 
-| Method    | True Polyarity   | Naked Arguments    | Type feedback        |
-| --------- | ---------------- | ------------------ | -------------------- |
-| `printf`  | Yes              | Yes                | Partial (via errors) |
-| `pprintf` | Yes              | No (requires `PP`) | Yes                  |
-| `rprintf` | No (HList-based) | Yes                | Yes                  |
-
-*Ideally* we would have a solution that has all three.  However, as of now, we
-have a "pick two" sort of situation.  Suggestions are definitely welcome,
-however, if you find something that satisfies all three benefits while still
-allowing for polymorphism!
+ghci> putStrLn $ printf @"You have %.2f dollars, %s" 3.62 "Luigi" 72
+-- ERROR: An extra argument of type Integer was given to a call to printf
+-- Either remove the argument, or rewrite the format string to include the
+-- appropriate hole.
+```
 
 You can extend functionality with formatting for your own types by providing
 instances of `FormatType`.
@@ -97,7 +76,7 @@ instances of `FormatType`.
 
 For medium-length or long strings, the parsing can be fairly slow and cause
 slow compile times.  This might be due to the underlying mechanism that the
-*[symbols][]* package exploits.
+*[symbols][]* package exploits...or just GHC performance issues in general.
 
 [symbols]: https://hackage.haskell.org/package/symbols
 

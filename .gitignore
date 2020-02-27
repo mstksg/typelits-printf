@@ -2,3 +2,4 @@
 typelits-printf.cabal
 *~
 dist-newstyle/
+*.dump-hi

@@ -1,5 +1,5 @@
 name:                typelits-printf
-version:             0.1.1.0
+version:             0.2.0.0
 github:              "mstksg/typelits-printf"
 license:             BSD3
 author:              "Justin Le"
@@ -42,4 +42,3 @@ library:
   dependencies:
   - symbols ^>= 0.3
   - text
-  - vinyl >= 0.12.1

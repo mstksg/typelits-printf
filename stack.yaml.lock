@@ -11,13 +11,6 @@ packages:
       sha256: 06746077732f4d49d3277821303292314d51df9a63efecd47217fc0946233026
   original:
     hackage: symbols-0.3.0.0
-- completed:
-    hackage: vinyl-0.12.1@sha256:43456d4b3009646eee63953cbe539f1f4d0caf8bc3c25e841117e712836508f3,3790
-    pantry-tree:
-      size: 1857
-      sha256: 1a0a5f97e92926ea84c90c7cc8da6f8ce1765ab7aca5deef98e8feca75c0c4cd
-  original:
-    hackage: vinyl-0.12.1
 snapshots:
 - completed:
     size: 495816

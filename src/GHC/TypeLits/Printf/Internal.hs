@@ -49,10 +49,6 @@ module GHC.TypeLits.Printf.Internal (
   , Demote
   , Reflect(..)
   , FormatType(..)
-  , PP(..)
-  , RPrintf(..)
-  , FormatArgs
-  , RFormat(..)
   , Printf(..)
   , FormatFun(..)
   , PFmt(..)
@@ -64,7 +60,6 @@ module GHC.TypeLits.Printf.Internal (
 import           Data.Int
 import           Data.Proxy
 import           Data.Symbol.Utils
-import           Data.Vinyl
 import           Data.Word
 import           GHC.OverloadedLabels
 import           GHC.TypeLits
@@ -235,141 +230,36 @@ instance FormatType "v" T.Text where
 instance FormatType "v" TL.Text where
     formatArg _ = P.formatArg . TL.unpack
 
--- | Required wrapper around inputs to 'GHC.TypeLits.Printf.pprintf'
--- (guarded polyarity).  See documentation for
--- 'GHC.TypeLits.Printf.pprintf' for examples of usage.
---
--- You can "wrap" any value in 'PP' as long as it can be formatted as the
--- format type indicated.
---
--- For example, to make a @'PP' "f"@, you can use @'PP' 3.5@ or @'PP'
--- 94.2@, but not @'PP' (3 :: Int)@ or @'PP' "hello"@.  To make a value of
--- type @'PP' c@, you must wrap a value that can be formatted via @c@.
-data PP (c :: SChar) = forall a. FormatType c a => PP a
-
--- | A heterogeneous list (from "Data.Vinyl.Core") used for calling with
--- 'GHC.TypeLits.Printf.rprintf'.  Instead of supplying the inputs as
--- different arguments, we can gather all the inputs into a single list to
--- give to 'GHC.TypeLits.Printf.rprintf'.
---
--- >>> :t rprintf @"You have %.2f dollars, %s"
--- FormatArgs '["f", "s"] -> String
---
--- To construct a @'FormatArgs' '["f", "s"]@, you need to give a value
--- formattable by @f@ and a value formattable by @s@, given like a linked
--- list, with 'GHC.TypeLits.Printf.:%' for cons and 'RNil' for nil.
---
--- >>> putStrLn $ rprintf @"You have %.2f dollars, %s" (3.62 :% "Luigi" :% RNil)
--- You have 3.62 dollars, Luigi
---
--- (This should evoke the idea of of @3.62 : "Luigi" : []@, even though the
--- latter is not possible in Haskell)
-type FormatArgs = Rec PP
-
-class RFormat (ffs :: [Either Symbol FieldFormat]) (ps :: [SChar]) | ffs -> ps where
-    rformat :: p ffs -> FormatArgs ps -> ShowS
-
-instance RFormat '[] '[] where
-    rformat _ _ = id
-
-instance (KnownSymbol str, RFormat ffs ps) => RFormat ('Left str ': ffs) ps where
-    rformat _ r = showString (symbolVal (Proxy @str))
-                . rformat (Proxy @ffs) r
-
-instance (Reflect ff, ff ~ 'FF f w p m c, RFormat ffs ps) => RFormat ('Right ff ': ffs) (c ': ps) where
-    rformat _ (PP x :& xs) = formatArg (Proxy @c) x ff
-                           . rformat (Proxy @ffs) xs
-      where
-        ff = reflect (Proxy @ff)
-
-class RPrintf (str :: Symbol) ps where
-    -- | A version of 'GHC.TypeLits.Printf.rprintf' taking an explicit
-    -- proxy, which allows usage without /TypeApplications/
-    --
-    -- >>> :t rprintf_ (Proxy :: Proxy "You have %.2f dollars, %s")
-    -- FormatArgs '["f", "s"] -> String
-    rprintf_ :: p str -> FormatArgs ps -> String
-
-instance (Listify str lst, ffs ~ ParseFmtStr_ lst, RFormat ffs ps) => RPrintf str ps where
-    rprintf_ _ = ($ "") . rformat (Proxy @ffs)
-
 -- | The typeclass supporting polyarity used by
 -- 'GHC.TypeLits.Printf.printf'. It works in mostly the same way as
 -- 'P.PrintfType' from "Text.Printf", and similar the same as
--- 'Data.Symbol.Examples.Printf.FormatF'.
---
--- Ideally, you will never have to run into this typeclass or have to deal
--- with it.  It will come up if you ask for the type of
--- 'GHC.TypeLits.Printf.printf', or sometimes if you give the wrong number
--- or type of arguments to it.
---
--- >>> :t printf @"You have %.2f dollars, %s"
--- FormatFun '[ Right ..., 'Left " dollars ", 'Right ...] fun => fun
+-- 'Data.Symbol.Examples.Printf.FormatF'.  Ideally, you will never have to
+-- run into this typeclass or have to deal with it directly.
 --
 -- Every item in the first argument of 'FormatFun' is a chunk of the
 -- formatting string, split between format holes ('Right') and string
--- chunks ('Left').  You can successively "eliminate" them by providing
--- more arguments that implement each hole:
+-- chunks ('Left').
 --
--- >>> :t printf @"You have %.2f dollars, %s" 3.62
--- FormatFun '[ Right ...] fun => fun
---
--- Until you you finally fill all the holes:
---
--- >>> :t printf @"You have %.2f dollars, %s" 3.62 "Luigi"
--- FormatFun '[] t => t
---
--- at which point you may use it as a 'String' or @'IO' ()@, in the same
--- way that "Text.Printf" works.  We also support using strict 'T.Text'
--- lazy 'TL.Text' as well.
---
--- So, while it's possible to reason with this using the types, it's
--- usually more difficult than with 'pprintf' and 'rprintf'.
---
--- This is why, instead of reasoning with this using its types, it's easier
--- to reason with it using the errors instead:
---
--- >>> printf @"You have %.2f dollars, %s"
--- -- ERROR: Call to printf missing argument fulfilling "%.2f"
--- -- Either provide an argument or rewrite the format string to not expect
--- -- one.
---
--- >>> printf @"You have %.2f dollars, %s" 3.62
--- -- ERROR: Call to printf missing argument fulfilling "%s"
--- -- Either provide an argument or rewrite the format string to not expect
--- -- one.
---
--- >>> printf @"You have %.2f dollars, %s" 3.62 "Luigi"
--- You have 3.62 dollars, Luigi
---
--- >>> printf @"You have %.2f dollars, %s" 3.62 "Luigi" 72
--- -- ERROR: An extra argument of type Integer was given to a call to printf
--- -- Either remove the argument, or rewrite the format string to include the
--- -- appropriate hole.
---
--- If you're having problems getting the error messages to give helpful
--- feedback, try using 'pHelp':
+-- If you want to see some useful error messages for feedback, 'pHelp' can
+-- be useful:
 --
 -- >>> pHelp $ printf @"You have %.2f dollars, %s" 3.62
 -- -- ERROR: Call to printf missing argument fulfilling "%s"
 -- -- Either provide an argument or rewrite the format string to not expect
 -- -- one.
---
--- 'pHelp' can give the type system the nudge it needs to provide good
--- errors.
 class FormatFun (ffs :: [Either Symbol FieldFormat]) fun where
     formatFun :: p ffs -> String -> fun
 
--- | A useful token for helping the type system give useful errors for
--- 'printf':
+-- | A useful tool for helping the type system give useful errors for
+-- 'GHC.TypeLits.Printf.printf':
 --
 -- >>> printf @"You have ".2f" dollars, %s" 3.26 :: PHelp
 -- -- ERROR: Call to printf missing argument fulfilling "%s"
 -- -- Either provide an argument or rewrite the format string to not expect
 -- -- one.
 --
--- Usually things should work out on their own without needing this ... but
--- sometimes the type system could need a nudge.
+-- Mostly useful if you want to force a useful type error to help see what
+-- is going on.
 --
 -- See also 'pHelp'
 newtype PHelp = PHelp {
@@ -381,8 +271,8 @@ newtype PHelp = PHelp {
     -- -- Either provide an argument or rewrite the format string to not expect
     -- -- one.
     --
-    -- Usually things would work out on their own without needing this ...
-    -- but sometimes the type system could need a nudge.
+    -- Mostly useful if you want to force a useful type error to help see
+    -- what is going on.
     pHelp :: String
   }
 
@@ -449,7 +339,7 @@ class Printf (str :: Symbol) fun where
 instance (Listify str lst, ffs ~ ParseFmtStr_ lst, FormatFun ffs fun) => Printf str fun where
     printf_ _ = formatFun (Proxy @ffs) ""
 
--- | Utility type powering 'pfmt'.  See dcumentation for 'pfmt' for more
+-- | Utility type powering 'pfmt'.  See documentation for 'pfmt' for more
 -- information on usage.
 --
 -- Using /OverloadedLabels/, you never need to construct this directly
@@ -510,6 +400,6 @@ instance (Listify str lst, ff ~ ParseFmt_ lst, Reflect ff, ff ~ 'FF f w p m c) =
 --
 -- (which should be possible in GHC 8.10+)
 --
--- Note that the format string does not include the leading @%@.
+-- Note that the format string should not include the leading @%@.
 pfmt :: forall c a. FormatType c a => PFmt c -> a -> String
 pfmt (PFmt ff) x = formatArg (Proxy @c) x ff ""

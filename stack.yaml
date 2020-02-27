@@ -41,7 +41,10 @@ packages:
 #
 extra-deps:
 - symbols-0.3.0.0
-- vinyl-0.12.1
+
+ghc-options:
+  "$locals": -ddump-to-file -ddump-hi
+
 
 # Override default flag values for local packages and extra-deps
 # flags: {}
