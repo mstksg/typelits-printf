@@ -93,10 +93,6 @@ There are a few other options for type-safe printfs out on hackage, and they
 all differ in a few key ways.  Some, like *[th-printf][]* and
 *[safe-printf][]*, offer Template Haskell-based ways to generate your printf
 functions.  This package is intended as a "template-haskell free" alternative.
-However, it is notable that with a Template-Haskell based approach, we can
-solve the "pick two" situation above: *[th-printf][]*'s printf fulfills all
-three requirements in the table above, with the only potential drawback being
-Template Haskell usage.
 
 Some others, like *[safe-printf][]*, *[formatting][]*, *[printf-safe][]*,
 *[xformat][]*, and *[category-printf][]*, require manually constructing your
