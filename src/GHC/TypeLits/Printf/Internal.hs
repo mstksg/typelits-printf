@@ -68,6 +68,7 @@ import           Numeric.Natural
 import qualified Data.Text                 as T
 import qualified Data.Text.Lazy            as TL
 import qualified Text.Printf               as P
+import           GHC.TypeLits.Printf.Internal.Unsatisfiable
 
 -- | Typeclass associating format types (@d@, @f@, etc.) with the types
 -- that can be formatted by them.
@@ -276,57 +277,59 @@ newtype PHelp = PHelp {
     pHelp :: String
   }
 
-instance {-# INCOHERENT #-} (a ~ String) => FormatFun '[] a where
+-- What is this incoherent instance for? It serves to make String the *default*
+-- result when the result type is entirely ambiguous.
+instance {-# INCOHERENT #-} a ~ String => FormatFun '[] a where
     formatFun _ = id
-instance (a ~ Char) => FormatFun '[] PHelp where
+instance FormatFun '[] PHelp where
     formatFun _ = PHelp
-instance (a ~ Char) => FormatFun '[] T.Text where
+instance FormatFun '[] T.Text where
     formatFun _ = T.pack
-instance (a ~ Char) => FormatFun '[] TL.Text where
+instance FormatFun '[] TL.Text where
     formatFun _ = TL.pack
-instance (a ~ ()) => FormatFun '[] (IO a) where
+instance a ~ () => FormatFun '[] (IO a) where
     formatFun _ = putStr
 
-instance TypeError ( 'Text "Result type of a call to printf not sufficiently inferred."
-               ':$$: 'Text "Please provide an explicit type annotation or other way to help inference."
-                   )
-      => FormatFun '[] () where
-    formatFun _ = error
-
-instance TypeError ( 'Text "An extra argument of type "
+instance Unsatisfiable ( 'Text "An extra argument of type "
                ':<>: 'ShowType a
                ':<>: 'Text " was given to a call to printf."
                ':$$: 'Text "Either remove the argument, or rewrite the format string to include the appropriate hole"
                    )
       => FormatFun '[] (a -> b) where
-    formatFun _ = error
+    formatFun = unsatisfiable
 
 instance (KnownSymbol str, FormatFun ffs fun) => FormatFun ('Left str ': ffs) fun where
     formatFun _ str = formatFun (Proxy @ffs) (str ++ symbolVal (Proxy @str))
 
-instance {-# INCOHERENT #-} (afun ~ (arg -> fun), Reflect ff, ff ~ 'FF f w p m c, FormatType c arg, FormatFun ffs fun) => FormatFun ('Right ff ': ffs) afun where
-    formatFun _ str x = formatFun (Proxy @ffs) (str ++ formatArg (Proxy @c) x ff "")
+type family IsFunction fun where
+  IsFunction (_ -> _) = 'True
+  IsFunction _ = 'False
+
+instance FormatFun' (IsFunction afun) ff ffs afun => FormatFun ('Right ff ': ffs) afun where
+    formatFun _ = formatFun' @(IsFunction afun) (Proxy @'(ff,ffs))
+
+-- A helper class for the case where we expect to produce a function
+class FormatFun' (is_function :: Bool) (ff :: FieldFormat) (ffs :: [Either Symbol FieldFormat]) fun where
+    formatFun' :: p '(ff, ffs) -> String -> fun
+
+-- What are these INCOHERENT horrors??? They're purely about getting good
+-- error messages. If GHC can see that we're definitely expected to produce
+-- something other than a function, then we want to get a custom error message
+-- rather than the one the compiler would produce. But if the result type is
+-- *ambiguous*, then we want to choose the instance that might make progress.
+instance {-# INCOHERENT #-} (afun ~ (arg -> fun), Reflect ff, ff ~ 'FF f w p m c, FormatType c arg, FormatFun ffs fun) => FormatFun' is_function ff ffs afun where
+    formatFun' _ str x = formatFun (Proxy @ffs) (str ++ formatArg (Proxy @c) x ff "")
       where
         ff = reflect (Proxy @ff)
+
+instance Unsatisfiable (MissingError ff) => FormatFun' 'False ff ffs notafun where
+    formatFun' = unsatisfiable
 
 type family MissingError ff where
     MissingError ff = 'Text "Call to printf missing an argument fulfilling \"%"
                 ':<>: 'Text (ShowFormat ff)
                 ':<>: 'Text "\""
                 ':$$: 'Text "Either provide an argument or rewrite the format string to not expect one."
-
-instance TypeError (MissingError ff) => FormatFun ('Right ff ': ffs) String where
-    formatFun _ = error
-instance TypeError (MissingError ff) => FormatFun ('Right ff ': ffs) () where
-    formatFun _ = error
-instance TypeError (MissingError ff) => FormatFun ('Right ff ': ffs) T.Text where
-    formatFun _ = error
-instance TypeError (MissingError ff) => FormatFun ('Right ff ': ffs) TL.Text where
-    formatFun _ = error
-instance TypeError (MissingError ff) => FormatFun ('Right ff ': ffs) PHelp where
-    formatFun _ = error
-instance TypeError (MissingError ff) => FormatFun ('Right ff ': ffs) (IO a) where
-    formatFun _ = error
 
 class Printf (str :: Symbol) fun where
     -- | A version of 'GHC.TypeLits.Printf.printf' taking an explicit
