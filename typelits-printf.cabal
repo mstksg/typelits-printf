@@ -43,6 +43,7 @@ library
 
   other-modules:
     GHC.TypeLits.Printf.Internal.Parser
+    GHC.TypeLits.Printf.Internal.Unsatisfiable
     GHC.TypeLits.Printf.Parse
 
   hs-source-dirs:   src
