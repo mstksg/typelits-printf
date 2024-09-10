@@ -1,10 +1,8 @@
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
 {-# LANGUAGE TypeInType #-}
 {-# LANGUAGE TypeOperators #-}
@@ -34,7 +32,6 @@ import qualified Data.Text as T
 import GHC.TypeLits hiding (SChar, natVal)
 import GHC.TypeLits.Printf.Internal.Parser
 import GHC.TypeNats
-import Numeric.Natural
 import Text.Printf (FormatAdjustment (..), FormatSign (..))
 import qualified Text.Printf as P
 

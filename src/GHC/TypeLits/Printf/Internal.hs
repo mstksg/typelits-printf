@@ -2,12 +2,8 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -66,7 +62,6 @@ import Data.Word
 import GHC.OverloadedLabels
 import GHC.TypeLits hiding (SChar)
 import GHC.TypeLits.Printf.Parse
-import Numeric.Natural
 import qualified Text.Printf as P
 
 -- | Typeclass associating format types (@d@, @f@, etc.) with the types
