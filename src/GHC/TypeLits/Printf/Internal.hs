@@ -1,21 +1,17 @@
-{-# LANGUAGE AllowAmbiguousTypes    #-}
-{-# LANGUAGE ConstraintKinds        #-}
-{-# LANGUAGE DefaultSignatures      #-}
-{-# LANGUAGE FlexibleInstances      #-}
-{-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE GADTs                  #-}
-{-# LANGUAGE KindSignatures         #-}
-{-# LANGUAGE LambdaCase             #-}
-{-# LANGUAGE MultiParamTypeClasses  #-}
-{-# LANGUAGE PatternSynonyms        #-}
-{-# LANGUAGE RankNTypes             #-}
-{-# LANGUAGE ScopedTypeVariables    #-}
-{-# LANGUAGE TypeApplications       #-}
-{-# LANGUAGE TypeFamilies           #-}
-{-# LANGUAGE TypeInType             #-}
-{-# LANGUAGE TypeOperators          #-}
-{-# LANGUAGE UndecidableInstances   #-}
-{-# OPTIONS_HADDOCK not-home        #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeInType #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# OPTIONS_HADDOCK not-home #-}
 
 -- |
 -- Module      : GHC.TypeLits.Printf.Internal
@@ -32,43 +28,42 @@
 -- Please do not use this module for anything besides debugging, as is
 -- definitely very unstable and might go away or change dramatically
 -- between versions.
-
 module GHC.TypeLits.Printf.Internal (
-    ParseFmtStr
-  , ParseFmtStr_
-  , ParseFmt
-  , ParseFmt_
-  , FormatAdjustment(..)
-  , ShowFormat
-  , FormatSign(..)
-  , WidthMod(..)
-  , Flags(..)
-  , EmptyFlags
-  , FieldFormat(..)
-  , SChar
-  , Demote
-  , Reflect(..)
-  , FormatType(..)
-  , Printf(..)
-  , FormatFun(..)
-  , PFmt(..)
-  , pfmt
-  , mkPFmt, mkPFmt_
-  , PHelp(..)
-  ) where
+  ParseFmtStr,
+  ParseFmtStr_,
+  ParseFmt,
+  ParseFmt_,
+  FormatAdjustment (..),
+  ShowFormat,
+  FormatSign (..),
+  WidthMod (..),
+  Flags (..),
+  EmptyFlags,
+  FieldFormat (..),
+  SChar,
+  Demote,
+  Reflect (..),
+  FormatType (..),
+  Printf (..),
+  FormatFun (..),
+  PFmt (..),
+  pfmt,
+  mkPFmt,
+  mkPFmt_,
+  PHelp (..),
+) where
 
-import           Data.Int
-import           Data.Proxy
-import           Data.Symbol.Utils
-import           Data.Word
-import           GHC.OverloadedLabels
-import           GHC.TypeLits
-import           GHC.TypeLits.Printf.Parse
-import           Numeric.Natural
-import qualified Data.Text                 as T
-import qualified Data.Text.Lazy            as TL
-import qualified Text.Printf               as P
-import           GHC.TypeLits.Printf.Internal.Unsatisfiable
+import Data.Int
+import Data.Proxy
+import Data.Symbol.Utils
+import qualified Data.Text as T
+import qualified Data.Text.Lazy as TL
+import Data.Word
+import GHC.OverloadedLabels
+import GHC.TypeLits hiding (SChar)
+import GHC.TypeLits.Printf.Internal.Unsatisfiable
+import GHC.TypeLits.Printf.Parse
+import qualified Text.Printf as P
 
 -- | Typeclass associating format types (@d@, @f@, etc.) with the types
 -- that can be formatted by them.
@@ -76,10 +71,9 @@ import           GHC.TypeLits.Printf.Internal.Unsatisfiable
 -- You can extend the printf methods here for your own types by writing
 -- your instances here.
 class FormatType (t :: SChar) a where
-    formatArg :: p t -> a -> P.FieldFormat -> ShowS
-
-    default formatArg :: P.PrintfArg a => p t -> a -> P.FieldFormat -> ShowS
-    formatArg _ = P.formatArg
+  formatArg :: p t -> a -> P.FieldFormat -> ShowS
+  default formatArg :: P.PrintfArg a => p t -> a -> P.FieldFormat -> ShowS
+  formatArg _ = P.formatArg
 
 instance FormatType "c" Char
 instance FormatType "c" Word8
@@ -188,48 +182,65 @@ instance FormatType "E" Float
 
 instance FormatType "s" String
 instance FormatType "s" T.Text where
-    formatArg _ = P.formatArg . T.unpack
+  formatArg _ = P.formatArg . T.unpack
 instance FormatType "s" TL.Text where
-    formatArg _ = P.formatArg . TL.unpack
+  formatArg _ = P.formatArg . TL.unpack
 
 -- | Treats as @c@
 instance FormatType "v" Char
+
 -- | Treats as @d@
 instance FormatType "v" Int
+
 -- | Treats as @d@
 instance FormatType "v" Int8
+
 -- | Treats as @d@
 instance FormatType "v" Int16
+
 -- | Treats as @d@
 instance FormatType "v" Int32
+
 -- | Treats as @d@
 instance FormatType "v" Int64
+
 -- | Treats as @d@
 instance FormatType "v" Integer
+
 -- | Treats as @u@
 instance FormatType "v" Natural
+
 -- | Treats as @u@
 instance FormatType "v" Word
+
 -- | Treats as @u@
 instance FormatType "v" Word8
+
 -- | Treats as @u@
 instance FormatType "v" Word16
+
 -- | Treats as @u@
 instance FormatType "v" Word32
+
 -- | Treats as @u@
 instance FormatType "v" Word64
+
 -- | Treats as @g@
 instance FormatType "v" Double
+
 -- | Treats as @g@
 instance FormatType "v" Float
+
 -- | Treats as @s@
 instance FormatType "v" String
+
 -- | Treats as @s@
 instance FormatType "v" T.Text where
-    formatArg _ = P.formatArg . T.unpack
+  formatArg _ = P.formatArg . T.unpack
+
 -- | Treats as @s@
 instance FormatType "v" TL.Text where
-    formatArg _ = P.formatArg . TL.unpack
+  formatArg _ = P.formatArg . TL.unpack
 
 -- | The typeclass supporting polyarity used by
 -- 'GHC.TypeLits.Printf.printf'. It works in mostly the same way as
@@ -249,7 +260,7 @@ instance FormatType "v" TL.Text where
 -- -- Either provide an argument or rewrite the format string to not expect
 -- -- one.
 class FormatFun (ffs :: [Either Symbol FieldFormat]) fun where
-    formatFun :: p ffs -> String -> fun
+  formatFun :: p ffs -> String -> fun
 
 -- | A useful tool for helping the type system give useful errors for
 -- 'GHC.TypeLits.Printf.printf':
@@ -263,18 +274,18 @@ class FormatFun (ffs :: [Either Symbol FieldFormat]) fun where
 -- is going on.
 --
 -- See also 'pHelp'
-newtype PHelp = PHelp {
-    -- | A useful helper function for helping the type system give useful
-    -- errors for 'printf':
-    --
-    -- >>> pHelp $ printf @"You have %.2f dollars, %s" 3.62
-    -- -- ERROR: Call to printf missing argument fulfilling "%s"
-    -- -- Either provide an argument or rewrite the format string to not expect
-    -- -- one.
-    --
-    -- Mostly useful if you want to force a useful type error to help see
-    -- what is going on.
-    pHelp :: String
+newtype PHelp = PHelp
+  { pHelp :: String
+  -- ^ A useful helper function for helping the type system give useful
+  -- errors for 'printf':
+  --
+  -- >>> pHelp $ printf @"You have %.2f dollars, %s" 3.62
+  -- -- ERROR: Call to printf missing argument fulfilling "%s"
+  -- -- Either provide an argument or rewrite the format string to not expect
+  -- -- one.
+  --
+  -- Mostly useful if you want to force a useful type error to help see
+  -- what is going on.
   }
 
 -- What is this incoherent instance for? It serves to make String the *default*
@@ -299,7 +310,7 @@ instance Unsatisfiable ( 'Text "An extra argument of type "
     formatFun = unsatisfiable
 
 instance (KnownSymbol str, FormatFun ffs fun) => FormatFun ('Left str ': ffs) fun where
-    formatFun _ str = formatFun (Proxy @ffs) (str ++ symbolVal (Proxy @str))
+  formatFun _ str = formatFun (Proxy @ffs) (str ++ symbolVal (Proxy @str))
 
 type family IsFunction fun where
   IsFunction (_ -> _) = 'True
@@ -326,21 +337,22 @@ instance Unsatisfiable (MissingError ff) => FormatFun' 'False ff ffs notafun whe
     formatFun' = unsatisfiable
 
 type family MissingError ff where
-    MissingError ff = 'Text "Call to printf missing an argument fulfilling \"%"
-                ':<>: 'Text (ShowFormat ff)
-                ':<>: 'Text "\""
-                ':$$: 'Text "Either provide an argument or rewrite the format string to not expect one."
+  MissingError ff =
+    'Text "Call to printf missing an argument fulfilling \"%"
+      ':<>: 'Text (ShowFormat ff)
+      ':<>: 'Text "\""
+      ':$$: 'Text "Either provide an argument or rewrite the format string to not expect one."
 
 class Printf (str :: Symbol) fun where
-    -- | A version of 'GHC.TypeLits.Printf.printf' taking an explicit
-    -- proxy, which allows usage without /TypeApplications/
-    --
-    -- >>> putStrLn $ printf_ (Proxy :: Proxy "You have %.2f dollars, %s") 3.62 "Luigi"
-    -- You have 3.62 dollars, Luigi
-    printf_ :: p str -> fun
+  -- | A version of 'GHC.TypeLits.Printf.printf' taking an explicit
+  -- proxy, which allows usage without /TypeApplications/
+  --
+  -- >>> putStrLn $ printf_ (Proxy :: Proxy "You have %.2f dollars, %s") 3.62 "Luigi"
+  -- You have 3.62 dollars, Luigi
+  printf_ :: p str -> fun
 
 instance (Listify str lst, ffs ~ ParseFmtStr_ lst, FormatFun ffs fun) => Printf str fun where
-    printf_ _ = formatFun (Proxy @ffs) ""
+  printf_ _ = formatFun (Proxy @ffs) ""
 
 -- | Utility type powering 'pfmt'.  See documentation for 'pfmt' for more
 -- information on usage.
@@ -355,10 +367,11 @@ newtype PFmt c = PFmt P.FieldFormat
 --
 -- >>> pfmt (mkPFmt_ (Proxy :: Proxy ".2f")) 3.6234124
 -- "3.62"
-mkPFmt_
-    :: forall str lst ff f w q m c p. (Listify str lst, ff ~ ParseFmt_ lst, Reflect ff, ff ~ 'FF f w q m c)
-    => p str
-    -> PFmt c
+mkPFmt_ ::
+  forall str lst ff f w q m c p.
+  (Listify str lst, ff ~ ParseFmt_ lst, Reflect ff, ff ~ 'FF f w q m c) =>
+  p str ->
+  PFmt c
 mkPFmt_ _ = PFmt ff
   where
     ff = reflect (Proxy @ff)
@@ -369,13 +382,14 @@ mkPFmt_ _ = PFmt ff
 --
 -- >>> pfmt (mkPFmt @".2f") 3.6234124
 -- "3.62"
-mkPFmt
-    :: forall str lst ff f w q m c. (Listify str lst, ff ~ ParseFmt_ lst, Reflect ff, ff ~ 'FF f w q m c)
-    => PFmt c
+mkPFmt ::
+  forall str lst ff f w q m c.
+  (Listify str lst, ff ~ ParseFmt_ lst, Reflect ff, ff ~ 'FF f w q m c) =>
+  PFmt c
 mkPFmt = mkPFmt_ @str @lst (Proxy @str)
 
 instance (Listify str lst, ff ~ ParseFmt_ lst, Reflect ff, ff ~ 'FF f w p m c) => IsLabel str (PFmt c) where
-    fromLabel = mkPFmt @str @lst
+  fromLabel = mkPFmt @str @lst
 
 -- | Parse and run a /single/ format hole on a single vale.  Can be useful
 -- for formatting individual items or for testing your own custom instances of

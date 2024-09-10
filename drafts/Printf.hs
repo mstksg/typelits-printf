@@ -1,17 +1,15 @@
-{-# LANGUAGE ConstraintKinds        #-}
-{-# LANGUAGE FlexibleInstances      #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE GADTs                  #-}
-{-# LANGUAGE KindSignatures         #-}
-{-# LANGUAGE LambdaCase             #-}
-{-# LANGUAGE MultiParamTypeClasses  #-}
-{-# LANGUAGE RankNTypes             #-}
-{-# LANGUAGE ScopedTypeVariables    #-}
-{-# LANGUAGE TypeApplications       #-}
-{-# LANGUAGE TypeFamilies           #-}
-{-# LANGUAGE TypeInType             #-}
-{-# LANGUAGE TypeOperators          #-}
-{-# LANGUAGE UndecidableInstances   #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeInType #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module GHC.Typelits.Printf where
 
@@ -19,17 +17,18 @@ module GHC.Typelits.Printf where
 --   ) where
 
 -- import           Data.SOP
-import           Data.Kind
-import           Data.Proxy
-import           Data.Vinyl
-import           Data.Vinyl.Curry
-import           Data.Vinyl.Functor
-import           GHC.Exts
-import           GHC.TypeLits
+import Data.Kind
+import Data.Proxy
+import Data.Vinyl
+import Data.Vinyl.Curry
+import Data.Vinyl.Functor
+import GHC.Exts
+import GHC.TypeLits
 
 -- so it looks like there are basically three ways of going about this:
 --
 --
+
 -- | Method | Polymorphic | Type-Determined | Naked types
 -- |--------+-------------+-----------------+-------------
 -- | A      | x           | x               |
@@ -70,57 +69,63 @@ import           GHC.TypeLits
 -- methods now: A (non-naked), C (undetermined), D (not true polyarity).
 --
 -- Maybe one module with each is better.
---
-
 data FieldFormat = FF
-    { fmtWidth     :: Maybe Nat
-    , fmtChar      :: Symbol
-    }
+  { fmtWidth :: Maybe Nat
+  , fmtChar :: Symbol
+  }
 
-newtype Formatter a = Formatter { runFormatter :: a -> ShowS }
+newtype Formatter a = Formatter {runFormatter :: a -> ShowS}
 
 data CType c = forall a. c a => C a
 
 class Format (ff :: FieldFormat) c | ff -> c where
-    format :: p ff -> Formatter (CType c)
+  format :: p ff -> Formatter (CType c)
 
 instance Format ('FF w "d") Integral where
-    format _ = Formatter $ \case C x -> shows (fromIntegral x :: Integer)
+  format _ = Formatter $ \case C x -> shows (fromIntegral x :: Integer)
 
 class RunFormatters (ffs :: [FieldFormat]) fun | ffs -> fun where
-    runFormatters :: p ffs -> String -> fun
+  runFormatters :: p ffs -> String -> fun
 
 instance RunFormatters '[] String where
-    runFormatters _ = id
+  runFormatters _ = id
 
 instance (Format ff c, RunFormatters ffs fun) => RunFormatters (ff : ffs) (CType c -> fun) where
-    runFormatters _ str x = runFormatters (Proxy @ffs)
-                          . runFormatter (format (Proxy @ff)) x
-                          $ str
+  runFormatters _ str x =
+    runFormatters (Proxy @ffs)
+      . runFormatter (format (Proxy @ff)) x
+      $ str
 
 class RunFormatters' (ffs :: [FieldFormat]) fun where
-    runFormatters' :: p ffs -> String -> fun
+  runFormatters' :: p ffs -> String -> fun
 
 --  Maybe this can be generalized to some sort of final context situation
 instance IsString a => RunFormatters' '[] a where
-    runFormatters' _ = fromString
+  runFormatters' _ = fromString
 
 -- instance TypeError ('Text "runFormatters' should ultimately return a String, but type inference inferred the wrong thing.  Please use a manual type annotation.")
 --       => RunFormatters' ffs () where
 --     runFormatters' _ = undefined
 
-instance TypeError ('Text "runFormatters' received an extra argument: unexpected " ':<>: 'ShowType a)
-      => RunFormatters' '[] (a -> b) where
-    runFormatters' _ = undefined
+instance
+  TypeError ('Text "runFormatters' received an extra argument: unexpected " ':<>: 'ShowType a) =>
+  RunFormatters' '[] (a -> b)
+  where
+  runFormatters' _ = undefined
 
-instance (Format ff c, TypeError ('Text "Missing an argument: expecting some instance of " ':<>: 'ShowType c))
-      => RunFormatters' (ff ': ffs) String where
-    runFormatters' _ = undefined
+instance
+  ( Format ff c
+  , TypeError ('Text "Missing an argument: expecting some instance of " ':<>: 'ShowType c)
+  ) =>
+  RunFormatters' (ff ': ffs) String
+  where
+  runFormatters' _ = undefined
 
 instance (Format ff c, c a, RunFormatters' ffs fun) => RunFormatters' (ff : ffs) (a -> fun) where
-    runFormatters' _ str x = runFormatters' (Proxy @ffs)
-                           . runFormatter (format (Proxy @ff)) (C x)
-                           $ str
+  runFormatters' _ str x =
+    runFormatters' (Proxy @ffs)
+      . runFormatter (format (Proxy @ff)) (C x)
+      $ str
 
 -- rf :: RunFormatters ffs fun => p ffs -> String -> fun
 -- rf = _
@@ -212,7 +217,6 @@ reC f x = f (C x)
 --     FStr  :: ShowS -> Formatters as -> Formatters as
 --     FForm :: Formatter a -> Formatters as -> Formatters (a ': as)
 
-
 -- class Parser cs
 
 -- class ToFormatters (cs :: [FieldFormat]) (as :: [Type]) where
@@ -221,13 +225,8 @@ reC f x = f (C x)
 -- instance ToFormatters '[] '[] where
 --     toFormatters _ = FNil
 
-
 -- runFormatters
 --     :: Formatters
-
-
-
-
 
 -- data FieldFormat = FF
 --     { fmtWidth     :: Maybe Nat
@@ -252,13 +251,9 @@ reC f x = f (C x)
 --                     . runFormatter (toFormat (Proxy @('FF w q a))) x
 --                     $ str
 
-
-
-
 -- instance (Integral a, Show a) => Formattable "d" a where
 --     toFormat = Formatter show
 
 -- runFormatter ::
-
 
 -- class Format

@@ -1,20 +1,14 @@
-{-# LANGUAGE AllowAmbiguousTypes    #-}
-{-# LANGUAGE ConstraintKinds        #-}
-{-# LANGUAGE DefaultSignatures      #-}
-{-# LANGUAGE FlexibleInstances      #-}
-{-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE GADTs                  #-}
-{-# LANGUAGE KindSignatures         #-}
-{-# LANGUAGE LambdaCase             #-}
-{-# LANGUAGE MultiParamTypeClasses  #-}
-{-# LANGUAGE PatternSynonyms        #-}
-{-# LANGUAGE RankNTypes             #-}
-{-# LANGUAGE ScopedTypeVariables    #-}
-{-# LANGUAGE TypeApplications       #-}
-{-# LANGUAGE TypeFamilies           #-}
-{-# LANGUAGE TypeInType             #-}
-{-# LANGUAGE TypeOperators          #-}
-{-# LANGUAGE UndecidableInstances   #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeInType #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 -- |
 -- Module      : GHC.TypeLits.Printf
@@ -42,23 +36,27 @@
 --
 -- Also in this module is 'pfmt', which allows you to format individual
 -- items according to a single format specifier.
---
 module GHC.TypeLits.Printf (
   -- * Printf
-    printf, printf_
-  , PHelp, pHelp
-  , FormatFun
-  -- * Formattable things
-  , FormatType(..)
-  , SChar
-  -- * Single item
-  , pfmt
-  , PFmt
-  , mkPFmt, mkPFmt_
-  ) where
+  printf,
+  printf_,
+  PHelp,
+  pHelp,
+  FormatFun,
 
-import           Data.Proxy
-import           GHC.TypeLits.Printf.Internal
+  -- * Formattable things
+  FormatType (..),
+  SChar,
+
+  -- * Single item
+  pfmt,
+  PFmt,
+  mkPFmt,
+  mkPFmt_,
+) where
+
+import Data.Proxy
+import GHC.TypeLits.Printf.Internal
 
 -- | "Type-safe printf". Call it like @'printf' \@"you have %.02f dollars, %s"@.
 --
@@ -115,4 +113,3 @@ import           GHC.TypeLits.Printf.Internal
 -- well.
 printf :: forall str fun. Printf str fun => fun
 printf = printf_ (Proxy @str)
-
