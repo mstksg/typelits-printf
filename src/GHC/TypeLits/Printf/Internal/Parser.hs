@@ -11,7 +11,7 @@ module GHC.TypeLits.Printf.Internal.Parser where
 import           Data.Kind
 import           Data.Type.Bool
 import           Data.Type.Equality
-import           GHC.TypeLits
+import           GHC.TypeLits hiding (SChar)
 
 -- | A type synonym for a single-character symbol.  Ideally this would just
 -- be 'Char', but we don't have chars at the type level.  So, if you see

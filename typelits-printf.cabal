@@ -1,0 +1,55 @@
+cabal-version:      1.12
+
+-- This file has been generated from package.yaml by hpack version 0.36.1.
+--
+-- see: https://github.com/sol/hpack
+
+name:               typelits-printf
+version:            0.2.0.0
+synopsis:           Type-safe printf from parsing GHC TypeLits Symbol
+description:
+  An extensible and type-safe printf from parsing GHC TypeLits Symbol
+  literals, matching the semantics of 'P.printf' from "Text.Printf" in /base/.
+  The difference is that the variants here will always fail to compile if
+  given arguments of the wrong type (or too many or too little arguments).
+  Most of the variants also provide useful type feedback, telling you the type
+  of arguments it expects and how many when queried with @:t@ or with typed
+  holes.
+  .
+  See README and documentation of "GHC.TypeLits.Printf" for more information
+
+category:           Text
+homepage:           https://github.com/mstksg/typelits-printf#readme
+bug-reports:        https://github.com/mstksg/typelits-printf/issues
+author:             Justin Le
+maintainer:         justin@jle.im
+copyright:          (c) Justin Le 2019
+license:            BSD3
+license-file:       LICENSE
+build-type:         Simple
+tested-with:        GHC >=8.8 && <8.10
+extra-source-files:
+  CHANGELOG.md
+  README.md
+
+source-repository head
+  type:     git
+  location: https://github.com/mstksg/typelits-printf
+
+library
+  exposed-modules:
+    GHC.TypeLits.Printf
+    GHC.TypeLits.Printf.Internal
+
+  other-modules:
+    GHC.TypeLits.Printf.Internal.Parser
+    GHC.TypeLits.Printf.Parse
+
+  hs-source-dirs:   src
+  ghc-options:      -Wall -Wcompat -Werror=incomplete-patterns
+  build-depends:
+      base     >=4.13 && <5
+    , symbols  >=0.3  && <0.4
+    , text
+
+  default-language: Haskell2010

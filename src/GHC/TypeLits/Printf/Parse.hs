@@ -30,7 +30,7 @@ module GHC.TypeLits.Printf.Parse (
 
 import           Data.Proxy
 import           Data.Text                           (Text)
-import           GHC.TypeLits hiding                 (natVal)
+import           GHC.TypeLits hiding                 (natVal, SChar)
 import           GHC.TypeLits.Printf.Internal.Parser
 import           GHC.TypeNats
 import           Numeric.Natural

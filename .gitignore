@@ -1,5 +1,6 @@
 .stack-work/
-typelits-printf.cabal
 *~
 dist-newstyle/
 *.dump-hi
+/.direnv
+/result

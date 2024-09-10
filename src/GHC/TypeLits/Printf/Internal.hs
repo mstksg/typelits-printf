@@ -62,7 +62,7 @@ import           Data.Proxy
 import           Data.Symbol.Utils
 import           Data.Word
 import           GHC.OverloadedLabels
-import           GHC.TypeLits
+import           GHC.TypeLits hiding (SChar)
 import           GHC.TypeLits.Printf.Parse
 import           Numeric.Natural
 import qualified Data.Text                 as T
