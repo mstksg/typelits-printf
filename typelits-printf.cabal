@@ -54,3 +54,20 @@ library
     , text
 
   default-language: Haskell2010
+
+test-suite typelits-printf-test
+  type:             exitcode-stdio-1.0
+  main-is:          spec.hs
+
+  hs-source-dirs:   test
+  ghc-options:
+    -Wall -Wcompat -Wredundant-constraints -threaded -rtsopts
+    -with-rtsopts=-N -O2 -freduction-depth=0
+
+  build-depends:
+      base                 >=4.9   && <5
+    , hspec
+    , typelits-printf
+
+  default-language: Haskell2010
+
