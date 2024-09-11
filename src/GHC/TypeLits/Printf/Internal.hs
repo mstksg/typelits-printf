@@ -180,7 +180,7 @@ instance FormatType 'e' Float
 instance FormatType 'E' Double
 instance FormatType 'E' Float
 
-instance FormatType 's' String
+instance P.IsChar c => FormatType 's' [c]
 instance FormatType 's' T.Text where
   formatArg _ = P.formatArg . T.unpack
 instance FormatType 's' TL.Text where
