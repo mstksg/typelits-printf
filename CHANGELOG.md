@@ -1,6 +1,17 @@
 Changelog
 =========
 
+Version 0.3.0.0
+---------------
+
+*September 11, 2024*
+
+<https://github.com/mstksg/typelits-printf/releases/tag/v0.3.0.0>
+
+*   Move to directly using `UnconsSymbol` and type-level `Char` literals from
+    GHC, available only GHC 9.2+. This means we can support unicode in strings,
+    and could be faster potentially.
+
 Version 0.2.0.0
 ---------------
 

@@ -10,11 +10,12 @@ You have 3.62 dollars, Luigi
 ```
 
 An extensible and type-safe printf from parsing GHC TypeLits Symbol literals,
-matching the semantics of *[Text.Printf][]* in *base*.  The difference is that
-your `printf`s will always fail to compile if given arguments of the wrong type
-(or too many or too little arguments).  It also allows you to use types to help
-your development, by telling you the type of arguments it expects and how many
-when queried with `:t` or with typed holes.
+matching the semantics of *[Text.Printf][]* in *base* (it actually uses the
+same formatting algorithm).  The difference is that your `printf`s will always
+fail to compile if given arguments of the wrong type (or too many or too little
+arguments).  It also allows you to use types to help your development, by
+telling you the type of arguments it expects and how many when queried with
+`:t` or with typed holes.
 
 [Text.Printf]: https://hackage.haskell.org/package/base/docs/Text-Printf.html
 
@@ -74,11 +75,11 @@ instances of `FormatType`.
 
 ## Caveats
 
-For medium-length or long strings, the parsing can be fairly slow and cause
-slow compile times.  This might be due to the underlying mechanism that the
-*[symbols][]* package exploits...or just GHC performance issues in general.
-
-[symbols]: https://hackage.haskell.org/package/symbols
+You will most likely need to add `-freduction-depth=0` for most strings longer
+than 30 characters-ish or so. Be aware that there is a compile-time cost per
+string, so if you notice your compile times getting long, try investigating
+this. It is written to be fully compatible with the `Text.Printf` module from
+*base*.
 
 Moving to typechecker plugin based parsing *does* improve performance ...
 however, I'm not sure how to get around requiring every module using `printf`
@@ -121,7 +122,6 @@ type-safe printf, emulating the features of *base*'s printf and C `printf(3)`.
 
 ## Todo
 
-*   Make faster
 *   Tests
 *   Support for localization/dynamic strings.  Should be possible, but we'd
     have to re-implement a subset of singletons.
