@@ -1,11 +1,11 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE NoStarIsType #-}
@@ -22,7 +22,6 @@ module GHC.TypeLits.Printf.Parse (
   Flags (..),
   EmptyFlags,
   FieldFormat (..),
-  SChar,
   Demote,
   Reflect (..),
 ) where
@@ -30,7 +29,7 @@ module GHC.TypeLits.Printf.Parse (
 import Data.Proxy
 import Data.Text (Text)
 import qualified Data.Text as T
-import GHC.TypeLits hiding (SChar, natVal)
+import GHC.TypeLits hiding (natVal)
 import GHC.TypeLits.Printf.Internal.Parser
 import GHC.TypeNats
 import Text.Printf (FormatAdjustment (..), FormatSign (..))
@@ -57,7 +56,7 @@ data FieldFormat = FF
   , fmtWidth :: Maybe Nat
   , fmtPrecision :: Maybe Nat
   , fmtWidthMod :: Maybe WidthMod
-  , fmtChar :: SChar
+  , fmtChar :: Char
   }
 
 type family Demote k = a | a -> k
@@ -67,6 +66,7 @@ type instance Demote Bool = Bool
 type instance Demote (Maybe a) = Maybe (Demote a)
 type instance Demote Nat = Natural
 type instance Demote Symbol = Text
+type instance Demote Char = Char
 type instance Demote Flags = Flags
 type instance Demote WidthMod = WidthMod
 type instance Demote FieldFormat = P.FieldFormat
@@ -74,36 +74,38 @@ type instance Demote FieldFormat = P.FieldFormat
 class Reflect (x :: a) where
   reflect :: p x -> Demote a
 
-instance Reflect 'LeftAdjust where
+instance Reflect LeftAdjust where
   reflect _ = LeftAdjust
-instance Reflect 'ZeroPad where
+instance Reflect ZeroPad where
   reflect _ = ZeroPad
-instance Reflect 'SignPlus where
+instance Reflect SignPlus where
   reflect _ = SignPlus
-instance Reflect 'SignSpace where
+instance Reflect SignSpace where
   reflect _ = SignSpace
-instance Reflect 'WMhh where
+instance Reflect WMhh where
   reflect _ = WMhh
-instance Reflect 'WMh where
+instance Reflect WMh where
   reflect _ = WMh
-instance Reflect 'WMl where
+instance Reflect WMl where
   reflect _ = WMl
-instance Reflect 'WMll where
+instance Reflect WMll where
   reflect _ = WMll
-instance Reflect 'WML where
+instance Reflect WML where
   reflect _ = WML
-instance Reflect 'False where
+instance Reflect False where
   reflect _ = False
-instance Reflect 'True where
+instance Reflect True where
   reflect _ = True
-instance Reflect 'Nothing where
+instance Reflect Nothing where
   reflect _ = Nothing
-instance Reflect x => Reflect ('Just x) where
+instance Reflect x => Reflect (Just x) where
   reflect _ = Just (reflect (Proxy @x))
 instance KnownNat n => Reflect (n :: Nat) where
   reflect = natVal
 instance KnownSymbol n => Reflect (n :: Symbol) where
   reflect = T.pack . symbolVal
+instance KnownChar c => Reflect (c :: Char) where
+  reflect = charVal
 instance (Reflect d, Reflect i, Reflect l) => Reflect ('Flags d i l) where
   reflect _ =
     Flags
@@ -123,40 +125,40 @@ instance
       fmtSign = fSign
       fmtAlternate = fAlternate
       fmtModifiers = foldMap modString (reflect (Proxy @mods))
-      fmtChar = T.head (reflect (Proxy @chr))
+      fmtChar = reflect (Proxy @chr)
 
 type family ShowFormat (x :: k) :: Symbol
 
-type instance ShowFormat 'LeftAdjust = "-"
-type instance ShowFormat 'ZeroPad = "0"
-type instance ShowFormat 'SignPlus = "+"
-type instance ShowFormat 'SignSpace = " "
-type instance ShowFormat 'Nothing = ""
-type instance ShowFormat ('Just x) = ShowFormat x
-type instance ShowFormat ('Flags a s 'False) = ShowFormat a `AppendSymbol` ShowFormat s
+type instance ShowFormat LeftAdjust = "-"
+type instance ShowFormat ZeroPad = "0"
+type instance ShowFormat SignPlus = "+"
+type instance ShowFormat SignSpace = " "
+type instance ShowFormat Nothing = ""
+type instance ShowFormat (Just x) = ShowFormat x
+type instance ShowFormat ('Flags a s False) = ShowFormat a `AppendSymbol` ShowFormat s
 type instance
-  ShowFormat ('Flags a s 'True) =
+  ShowFormat ('Flags a s True) =
     ShowFormat a `AppendSymbol` ShowFormat s `AppendSymbol` "#"
-type instance ShowFormat 'WMhh = "hh"
-type instance ShowFormat 'WMh = "h"
-type instance ShowFormat 'WMl = "l"
-type instance ShowFormat 'WMll = "ll"
-type instance ShowFormat 'WML = "L"
+type instance ShowFormat WMhh = "hh"
+type instance ShowFormat WMh = "h"
+type instance ShowFormat WMl = "l"
+type instance ShowFormat WMll = "ll"
+type instance ShowFormat WML = "L"
 type instance ShowFormat (n :: Nat) = ShowNat n
 type instance
-  ShowFormat ('FF f w 'Nothing m c) =
+  ShowFormat ('FF f w Nothing m c) =
     ShowFormat f
       `AppendSymbol` ShowFormat w
       `AppendSymbol` ShowFormat m
-      `AppendSymbol` c
+      `AppendSymbol` ConsSymbol c ""
 type instance
-  ShowFormat ('FF f w ('Just p) m c) =
+  ShowFormat ('FF f w (Just p) m c) =
     ShowFormat f
       `AppendSymbol` ShowFormat w
       `AppendSymbol` "."
       `AppendSymbol` ShowFormat p
       `AppendSymbol` ShowFormat m
-      `AppendSymbol` c
+      `AppendSymbol` ConsSymbol c ""
 
 type family ShowNat (n :: Nat) :: Symbol where
   ShowNat 0 = "0"
@@ -164,19 +166,19 @@ type family ShowNat (n :: Nat) :: Symbol where
 
 type family ShowNatHelp (n :: Nat) :: Symbol where
   ShowNatHelp 0 = ""
-  ShowNatHelp n = AppendSymbol (ShowNatHelp (Div n 10)) (ShowDigit (Mod n 10))
+  ShowNatHelp n = AppendSymbol (ShowNatHelp (Div n 10)) (ConsSymbol (ShowDigit (Mod n 10)) "")
 
-type family ShowDigit (n :: Nat) :: SChar where
-  ShowDigit 0 = "0"
-  ShowDigit 1 = "1"
-  ShowDigit 2 = "2"
-  ShowDigit 3 = "3"
-  ShowDigit 4 = "4"
-  ShowDigit 5 = "5"
-  ShowDigit 6 = "6"
-  ShowDigit 7 = "7"
-  ShowDigit 8 = "8"
-  ShowDigit 9 = "9"
+type family ShowDigit (n :: Nat) :: Char where
+  ShowDigit 0 = '0'
+  ShowDigit 1 = '1'
+  ShowDigit 2 = '2'
+  ShowDigit 3 = '3'
+  ShowDigit 4 = '4'
+  ShowDigit 5 = '5'
+  ShowDigit 6 = '6'
+  ShowDigit 7 = '7'
+  ShowDigit 8 = '8'
+  ShowDigit 9 = '9'
 
 modString :: WidthMod -> String
 modString = \case
@@ -187,47 +189,47 @@ modString = \case
   WML -> "L"
 
 data FlagParser :: Parser Flags
-type instance RunParser FlagParser str = 'Just (ProcessFlags EmptyFlags str)
+type instance RunParser FlagParser str = Just (ProcessFlags EmptyFlags str)
 
-type EmptyFlags = 'Flags 'Nothing 'Nothing 'False
+type EmptyFlags = 'Flags Nothing Nothing False
 
-type family ProcessFlags (f :: Flags) (str :: [SChar]) :: (Flags, [SChar]) where
-  ProcessFlags ('Flags d i l) ("-" ': cs) = '( 'Flags ('Just (UpdateAdjust d 'LeftAdjust)) i l, cs)
-  ProcessFlags ('Flags d i l) ("0" ': cs) = '( 'Flags ('Just (UpdateAdjust d 'ZeroPad)) i l, cs)
-  ProcessFlags ('Flags d i l) ("+" ': cs) = '( 'Flags d ('Just (UpdateSign i 'SignPlus)) l, cs)
-  ProcessFlags ('Flags d i l) (" " ': cs) = '( 'Flags d ('Just (UpdateSign i 'SignSpace)) l, cs)
-  ProcessFlags ('Flags d i l) ("#" ': cs) = '( 'Flags d i 'True, cs)
-  ProcessFlags f cs = '(f, cs)
+type family ProcessFlags (f :: Flags) (str :: Maybe (Char, Symbol)) :: (Flags, Symbol) where
+  ProcessFlags ('Flags d i l) (Just '( '-', cs)) =
+    '( 'Flags (Just (UpdateAdjust d LeftAdjust)) i l, cs)
+  ProcessFlags ('Flags d i l) (Just '( '0', cs)) = '( 'Flags (Just (UpdateAdjust d ZeroPad)) i l, cs)
+  ProcessFlags ('Flags d i l) (Just '( '+', cs)) = '( 'Flags d (Just (UpdateSign i SignPlus)) l, cs)
+  ProcessFlags ('Flags d i l) (Just '( ' ', cs)) = '( 'Flags d (Just (UpdateSign i SignSpace)) l, cs)
+  ProcessFlags ('Flags d i l) (Just '( '#', cs)) = '( 'Flags d i True, cs)
+  ProcessFlags f (Just '(c, cs)) = '(f, ConsSymbol c cs)
+  ProcessFlags f Nothing = '(f, "")
 
 type family UpdateAdjust d1 d2 where
-  UpdateAdjust 'Nothing d2 = d2
-  UpdateAdjust ('Just 'LeftAdjust) d2 = 'LeftAdjust
-  UpdateAdjust ('Just 'ZeroPad) d2 = d2
+  UpdateAdjust Nothing d2 = d2
+  UpdateAdjust (Just LeftAdjust) d2 = LeftAdjust
+  UpdateAdjust (Just ZeroPad) d2 = d2
 
 type family UpdateSign i1 i2 where
-  UpdateSign 'Nothing i2 = i2
-  UpdateSign ('Just 'SignPlus) i2 = 'SignPlus
-  UpdateSign ('Just 'SignSpace) i2 = i2
+  UpdateSign Nothing i2 = i2
+  UpdateSign (Just SignPlus) i2 = SignPlus
+  UpdateSign (Just SignSpace) i2 = i2
 
 type WMParser =
-  (Sym "h" *> (('WMhh <$ Sym "h") <|> Pure 'WMh))
-    <|> (Sym "l" *> (('WMll <$ Sym "l") <|> Pure 'WMl))
-    <|> ('WML <$ Sym "L")
+  (AsChar 'h' *> ((WMhh <$ AsChar 'h') <|> Pure WMh))
+    <|> (AsChar 'l' *> ((WMll <$ AsChar 'l') <|> Pure WMl))
+    <|> (WML <$ AsChar 'L')
 
 type FFParser =
   'FF
     <$> FlagParser
     <*> Optional Number
-    <*> Optional (Sym "." *> Number)
+    <*> Optional (AsChar '.' *> Number)
     <*> Optional WMParser
-    <*> AnySym
-
--- <*> Alpha        -- which of these is right?
+    <*> AnyChar
 
 type FmtStrParser =
   Many
-    ( ('Left <$> Cat (Some (NotSym "%" <|> (Sym "%" *> Sym "%"))))
-        <|> ('Right <$> (Sym "%" *> FFParser))
+    ( (Left <$> Cat (Some (NotChar '%' <|> (AsChar '%' *> AsChar '%'))))
+        <|> (Right <$> (AsChar '%' *> FFParser))
     )
 
 type ParseFmtStr str = EvalParser FmtStrParser str

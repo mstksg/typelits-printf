@@ -49,8 +49,7 @@ library
   hs-source-dirs:   src
   ghc-options:      -Wall -Wcompat -Werror=incomplete-patterns
   build-depends:
-      base     >=4.13 && <5
-    , symbols  >=0.3  && <0.4
+      base  >=4.16 && <5
     , text
 
   default-language: Haskell2010
