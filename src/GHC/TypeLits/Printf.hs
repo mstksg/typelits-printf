@@ -46,8 +46,8 @@
 module GHC.TypeLits.Printf (
   -- * Printf
   printf,
-  printf_,
   printf',
+  printf_,
   PHelp,
   pHelp,
   FormatFun,
