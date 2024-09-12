@@ -23,11 +23,16 @@ As of GHC 9.10 and later (and version 0.3.0.0 of this library), it uses
 `-XRequiredTypeArguments` to allow you to pass in the printf spec literal
 directly as if it were a normal String literal.
 
-[!NOTE]
-The `printf` function here is only type-safe in GHC 9.10 and higher. If you are
-before GHC 9.10, you should use `printf'` instead and `-XTypeApplications`
-syntax: `printf @"You have %.2f dollars, %s" 3.62 "Luigi"`. Note the `@` before
-the string literal.
+> [!NOTE]
+> The `printf` function here is only type-safe in GHC 9.10 and higher. If you are
+> before GHC 9.10, you should use `printf'` instead and `-XTypeApplications`
+> syntax:
+>
+> ```
+> printf' @"You have %.2f dollars, %s" 3.62 "Luigi"
+> ```
+>
+> Note the `@` before the string literal.
 
 Looking at its type:
 
