@@ -74,7 +74,7 @@ import qualified Text.Printf as P
 -- __NOTE__: This is only type-safe in GHC 9.10 and above. A compatible
 -- version is provided in earlier versions that compiles (as long as you
 -- provide a string literal). For a type-safe version before GHC 9.10, use
--- 'printf'.
+-- 'printf''.
 --
 -- Anyway, looking at its type:
 --
