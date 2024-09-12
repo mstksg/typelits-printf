@@ -1,4 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -10,6 +11,10 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
+
+#if MIN_VERSION_base(4,20,0)
+{-# LANGUAGE RequiredTypeArguments #-}
+#endif
 
 -- |
 -- Module      : GHC.TypeLits.Printf
@@ -30,7 +35,8 @@
 -- "Text.Printf" for details on how this formats items of various types,
 -- and the differences with C @printf(3)@.
 --
--- See 'printf' for the main function.
+-- See 'printf' for the main function, or 'printf'' if you are on GHC 9.10 and
+-- later.
 --
 -- You can extend functionality with formatting for your own types by providing
 -- instances of 'FormatType'.
@@ -41,6 +47,7 @@ module GHC.TypeLits.Printf (
   -- * Printf
   printf,
   printf_,
+  printf',
   PHelp,
   pHelp,
   FormatFun,
@@ -57,15 +64,21 @@ module GHC.TypeLits.Printf (
 
 import Data.Proxy
 import GHC.TypeLits.Printf.Internal
+import qualified Text.Printf as P
 
--- | "Type-safe printf". Call it like @'printf' \@"you have %.02f dollars, %s"@.
+-- | "Type-safe printf". Call it like @'printf' "you have %.02f dollars, %s"@.
 --
--- >>> putStrLn $ printf @"You have %.2f dollars, %s" 3.62 "Luigi"
+-- >>> putStrLn $ printf "You have %.2f dollars, %s" 3.62 "Luigi"
 -- You have 3.62 dollars, Luigi
 --
--- Looking at its type:
+-- __NOTE__: This is only type-safe in GHC 9.10 and above. A compatible
+-- version is provided in earlier versions that compiles (as long as you
+-- provide a string literal). For a type-safe version before GHC 9.10, use
+-- 'printf'.
 --
--- >>> :t printf @"You have %.2f dollars, %s"
+-- Anyway, looking at its type:
+--
+-- >>> :t printf "You have %.2f dollars, %s"
 -- (FormatType "f" arg1, FormatType "s" arg2)
 --   => arg1 -> arg2 -> String
 --
@@ -76,25 +89,25 @@ import GHC.TypeLits.Printf.Internal
 --
 -- We can see this in action by progressively applying arguments:
 --
--- >>> :t printf @"You have %.2f dollars, %s" 3.62
+-- >>> :t printf "You have %.2f dollars, %s" 3.62
 -- FormatType "s" arg1 => arg1 -> String
--- >>> :t printf @"You have %.2f dollars, %s" 3.62 "Luigi"
+-- >>> :t printf "You have %.2f dollars, %s" 3.62 "Luigi"
 -- String
 --
 -- The type errors for forgetting to apply an argument (or applying too many
 -- arguments) are pretty clear:
 --
--- >>> putStrLn $ printf @"You have %.2f dollars, %s"
+-- >>> putStrLn $ printf "You have %.2f dollars, %s"
 -- -- ERROR: Call to printf missing argument fulfilling "%.2f"
 -- -- Either provide an argument or rewrite the format string to not expect
 -- -- one.
--- >>> putStrLn $ printf @"You have %.2f dollars, %s" 3.62
+-- >>> putStrLn $ printf "You have %.2f dollars, %s" 3.62
 -- -- ERROR: Call to printf missing argument fulfilling "%s"
 -- -- Either provide an argument or rewrite the format string to not expect
 -- -- one.
--- >>> putStrLn $ printf @"You have %.2f dollars, %s" 3.62 "Luigi"
+-- >>> putStrLn $ printf "You have %.2f dollars, %s" 3.62 "Luigi"
 -- You have 3.62 dollars, Luigi
--- >>> putStrLn $ printf @"You have %.2f dollars, %s" 3.62 "Luigi" 72
+-- >>> putStrLn $ printf "You have %.2f dollars, %s" 3.62 "Luigi" 72
 -- -- ERROR: An extra argument of type Integer was given to a call to printf
 -- -- Either remove the argument, or rewrite the format string to include the
 -- -- appropriate hole.
@@ -102,14 +115,28 @@ import GHC.TypeLits.Printf.Internal
 -- If you want to see some useful error messages for feedback, 'pHelp' can
 -- be useful:
 --
--- >>> pHelp $ printf @"You have %.2f dollars, %s" 3.62
+-- >>> pHelp $ printf "You have %.2f dollars, %s" 3.62
 -- -- ERROR: Call to printf missing argument fulfilling "%s"
 -- -- Either provide an argument or rewrite the format string to not expect
 -- -- one.
 --
 -- Note that this also supports the "interpret as an IO action to print out
--- results" functionality that "Text.Printf" supports.  This also supports
--- returning strict 'Data.Text.Text' and lazy 'Data.Text.Lazy.Text' as
--- well.
-printf :: forall str fun. Printf str fun => fun
-printf = printf_ (Proxy @str)
+-- results" functionality that "Text.Printf" supports.  And, in GHC 9.10 and
+-- higher, this also supports returning strict 'Data.Text.Text' and lazy
+-- 'Data.Text.Lazy.Text' as well.
+#if MIN_VERSION_base(4,20,0)
+printf :: forall fun. forall str -> Printf str fun => fun
+printf str = printf_ (Proxy @str)
+#else
+printf :: P.PrintfType r => String -> r
+printf = P.printf
+{-# WARNING printf "This only does type-safe printf GHC 9.10 or later, but will still compile (unsafely) in earlier GHC as long as you use a string literal. For a type-safe version before 9.10, use printf' instead." #-}
+#endif
+
+-- | A version of 'printf' that uses @-XTypeApplications@ syntax to provide
+-- the type-level string. Available since GHC 9.2 and higher.
+--
+-- >>> putStrLn $ printf @"You have %.2f dollars, %s" 3.62 "Luigi"
+-- You have 3.62 dollars, Luigi
+printf' :: forall str fun. Printf str fun => fun
+printf' = printf_ (Proxy @str)

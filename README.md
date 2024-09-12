@@ -5,29 +5,34 @@
 [symbols]: https://hackage.haskell.org/package/symbols-0.3.0.0/docs/Data-Symbol-Examples-Printf.html
 
 ```haskell
-ghci> putStrLn $ printf @"You have %.2f dollars, %s" 3.62 "Luigi"
+ghci> putStrLn $ printf "You have %.2f dollars, %s" 3.62 "Luigi"
 You have 3.62 dollars, Luigi
 ```
 
 An extensible and type-safe printf from parsing GHC TypeLits Symbol literals,
 matching the semantics of *[Text.Printf][]* in *base* (it actually uses the
-same formatting algorithm).  The difference is that your `printf`s will always
-fail to compile if given arguments of the wrong type (or too many or too little
-arguments).  It also allows you to use types to help your development, by
-telling you the type of arguments it expects and how many when queried with
-`:t` or with typed holes.
+same formatting function under the hood).  The difference is that your
+`printf`s will always fail to compile if given arguments of the wrong type (or
+too many or too little arguments).  It also allows you to use types to help
+your development, by telling you the type of arguments it expects and how many
+when queried with `:t` or with typed holes.
 
 [Text.Printf]: https://hackage.haskell.org/package/base/docs/Text-Printf.html
 
-```haskell
-ghci> putStrLn $ printf @"You have %.2f dollars, %s" 3.62 "Luigi"
-You have 3.62 dollars, Luigi
-```
+As of GHC 9.10 and later (and version 0.3.0.0 of this library), it uses
+`-XRequiredTypeArguments` to allow you to pass in the printf spec literal
+directly as if it were a normal String literal.
+
+[!NOTE]
+The `printf` function here is only type-safe in GHC 9.10 and higher. If you are
+before GHC 9.10, you should use `printf'` instead and `-XTypeApplications`
+syntax: `printf @"You have %.2f dollars, %s" 3.62 "Luigi"`. Note the `@` before
+the string literal.
 
 Looking at its type:
 
 ```haskell
-ghci> :t printf @"You have %.2f dollars, %s"
+ghci> :t printf "You have %.2f dollars, %s"
 (FormatType "f" arg1, FormatType "s" arg2)
   => arg1 -> arg2 -> String
 ```
@@ -40,10 +45,10 @@ must be an instance of `FormatType "s"` (things that can be formatted by `%s`).
 We can see this in action by progressively applying arguments:
 
 ```haskell
-ghci> :t printf @"You have %.2f dollars, %s" 3.62
+ghci> :t printf "You have %.2f dollars, %s" 3.62
 FormatType "s" arg1 => arg1 -> String
 
-ghci> :t printf @"You have %.2f dollars, %s" 3.62 "Luigi"
+ghci> :t printf "You have %.2f dollars, %s" 3.62 "Luigi"
 String
 ```
 
@@ -51,20 +56,20 @@ The type errors for forgetting to apply an argument (or applying too many
 arguments) are pretty clear:
 
 ```haskell
-ghci> putStrLn $ printf @"You have %.2f dollars, %s"
+ghci> putStrLn $ printf "You have %.2f dollars, %s"
 -- ERROR: Call to printf missing argument fulfilling "%.2f"
 -- Either provide an argument or rewrite the format string to not expect
 -- one.
 
-ghci> putStrLn $ printf @"You have %.2f dollars, %s" 3.62
+ghci> putStrLn $ printf "You have %.2f dollars, %s" 3.62
 -- ERROR: Call to printf missing argument fulfilling "%s"
 -- Either provide an argument or rewrite the format string to not expect
 -- one.
 
-ghci> putStrLn $ printf @"You have %.2f dollars, %s" 3.62 "Luigi"
+ghci> putStrLn $ printf "You have %.2f dollars, %s" 3.62 "Luigi"
 You have 3.62 dollars, Luigi
 
-ghci> putStrLn $ printf @"You have %.2f dollars, %s" 3.62 "Luigi" 72
+ghci> putStrLn $ printf "You have %.2f dollars, %s" 3.62 "Luigi" 72
 -- ERROR: An extra argument of type Integer was given to a call to printf
 -- Either remove the argument, or rewrite the format string to include the
 -- appropriate hole.
