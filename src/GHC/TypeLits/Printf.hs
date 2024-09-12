@@ -136,7 +136,7 @@ printf = P.printf
 -- | A version of 'printf' that uses @-XTypeApplications@ syntax to provide
 -- the type-level string. Available since GHC 9.2 and higher.
 --
--- >>> putStrLn $ printf @"You have %.2f dollars, %s" 3.62 "Luigi"
+-- >>> putStrLn $ printf' @"You have %.2f dollars, %s" 3.62 "Luigi"
 -- You have 3.62 dollars, Luigi
 printf' :: forall str fun. Printf str fun => fun
 printf' = printf_ (Proxy @str)
